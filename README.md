@@ -1,2 +1,2 @@
-# GWRE
-The repository of geographically weighted regression with elevation
+# Introduction
+This is a repository for Spatial Weight Matrix with Elevation project.
