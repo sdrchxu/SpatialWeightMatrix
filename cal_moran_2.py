@@ -26,24 +26,18 @@ def inverse_weights(gdf,L0):
     # 提取所需的字段（ID, X, Y, Z）
     df = gdf[['ID', 'X', 'Y', 'Z']].copy()
 
-    # 设置距离阈值L0
 
-    # 创建一个空的空间权重矩阵
-    spatial_weights = np.zeros((len(df), len(df)))
-
-    # 计算空间权重矩阵
-    for i in range(len(df)):
-        for j in range(len(df)):
-            # 计算两要素间的实际距离
-            distance = np.sqrt((df['X'][i] - df['X'][j])**2 + (df['Y'][i] - df['Y'][j])**2 + (df['Z'][i] - df['Z'][j])**2)
-            
-            # 判断距离是否小于阈值
-            if distance <= L0:
-                spatial_weights[i, j] = 1
-
+    # 计算距离矩阵
+    coordinates = df[['X', 'Y', 'Z']].values
+    # coordinates = df[['X', 'Y']].values
+    distances = cdist(coordinates, coordinates)
+    # 应用反距离权重
+    spatial_weights = np.where(distances==0, 0, np.where(distances <= L0,1/distances,0))
     # 将空间权重矩阵保存到DataFrame中
-    spatial_weights_df = pd.DataFrame(spatial_weights, columns=df['ID'], index=df['ID'])
+    spatial_weights_df = pd.DataFrame(spatial_weights)
     return spatial_weights_df
+
+
 
 
 def gauss_weights(gdf,L0):
@@ -59,40 +53,20 @@ def gauss_weights(gdf,L0):
     -------------
     包含空间权重矩阵的DataFrame
     """
+    # Converting to numpy array
+    coordinates = gdf[['X', 'Y', 'Z']].values
+    # Calculating distance matrix
+    distances = cdist(coordinates, coordinates)
 
-    # 获取字段X、Y、Z和ID的索引
-    fields = [field[0] for field in gdf.fields[1:]]
-    x_index = fields.index('X')
-    y_index = fields.index('Y')
-    z_index = fields.index('Z')
-    id_index = fields.index('ID')
+    # Applying Gaussian function to calculate weights
+    weights = np.exp(-distances**2 / (2 * L0**2))
 
-    # 获取点坐标和ID
-    points = []
-    ids = []
-    for sr in gdf.shapeRecords():
-        points.append((sr.record[x_index], sr.record[y_index], sr.record[z_index]))
-        ids.append(sr.record[id_index])
+    # Creating DataFrame with weights and setting index and column names
+    spatial_weights_df = pd.DataFrame(weights, index=gdf['ID'], columns=gdf['ID'])
 
-    # 转换为numpy数组
-    data = np.array(points)
+    return spatial_weights_df
 
-    # 设置距离阈值
-    threshold = L0  # 单位：米
 
-    # 计算空间权重矩阵
-    num_points = len(ids)
-    weight_matrix = np.zeros((num_points, num_points))
-
-    for i in range(num_points):
-        center_point = data[i]
-        distances = cdist([center_point], data)[0]
-        weights = np.exp(-distances**2 / (2 * threshold**2))
-        weight_matrix[i] = weights
-
-    # 创建DataFrame并设置索引和列名
-    df_weights = pd.DataFrame(weight_matrix, index=ids, columns=ids)
-    return df_weights
 
 def threshold_weights(gdf,L0):
     """
@@ -109,19 +83,14 @@ def threshold_weights(gdf,L0):
     """
     # 提取所需的字段（ID, X, Y, Z）
     df = gdf[['ID', 'X', 'Y', 'Z']].copy()
+    coordinates = df[['X', 'Y', 'Z']].values
 
-    # 创建一个空的空间权重矩阵
-    spatial_weights = np.zeros((len(df), len(df)))
+    #计算要素间的距离
+    # coordinates = df[['X', 'Y']].values
+    distances = cdist(coordinates, coordinates)
 
-    # 计算空间权重矩阵
-    for i in range(len(df)):
-        for j in range(len(df)):
-            # 计算两要素间的实际距离
-            distance = np.sqrt((df['X'][i] - df['X'][j])**2 + (df['Y'][i] - df['Y'][j])**2 + (df['Z'][i] - df['Z'][j])**2)
-            
-            # 判断距离是否小于阈值
-            if distance <= L0:
-                spatial_weights[i, j] = 1
+    # 对得到的距离进行判断并赋值
+    spatial_weights = np.where(distances<=L0, 1, 0)
 
     # 将空间权重矩阵保存到DataFrame中
     spatial_weights_df = pd.DataFrame(spatial_weights)
@@ -180,7 +149,7 @@ def global_moran(shp_path,field,output_file,distance_function,threshold=float('i
         f.write('P-value: {}\n'.format(moran.p_sim))
         f.write('Z-score: {}\n'.format(moran.z_sim))
 
-    plot_moran(moran, zstandard=True, figsize=(10, 4))
+    plot_moran(moran, zstandard=True, figsize=(20, 8))
     plt.savefig(output_png)
     plt.close()
     print("Done!")
