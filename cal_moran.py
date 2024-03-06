@@ -6,6 +6,9 @@ from scipy.sparse import csr_matrix
 import scipy
 import shapefile
 from scipy.spatial.distance import cdist
+from pysal.explore import esda
+from splot.esda import plot_moran
+import matplotlib.pyplot as plt
 
 def inverse_weights(gdf,L0):
     """
@@ -125,19 +128,27 @@ def threshold_weights(gdf,L0):
     return spatial_weights_df
 
 
-def global_moran(shp_path,field,distance_function,threshold=float('inf'),std=True):
+def global_moran(shp_path,field,distance_function,output_file,threshold=float('inf'),std=True):
     """
-    计算全局Moran'I指数
+    计算全局Moran'I指数，调用该函数后会计算全局Moran'I指数，
+    并在指定路径生成txt和png分析结果
 
     参数：
     -----------
     shp_path:          shapefile文件位置
     field:             输入字段
     distance_function: 空间关系概念化函数，可选threshold/gauss/inverse
+    output_file:       输出路径，输出文件名无需写扩展名
     threshold:         距离阈值，留空则为不设置阈值
     std:               标准化方法，True为行标准化，False为不进行标准化
+
+    返回值：
+    -------------
+    None
     """
+    print("Reading Shapefile...")
     gdf = gpd.read_file(shp_path)
+    print("Calculating Weights Matrix...")
     if distance_function=='threshold':
         spatial_weights_df = threshold_weights(gdf,threshold)
     elif distance_function=='gauss':
@@ -146,15 +157,29 @@ def global_moran(shp_path,field,distance_function,threshold=float('inf'),std=Tru
         spatial_weights_df = inverse_weights(gdf,threshold)
     sparse_matrix=scipy.sparse.csr_matrix(spatial_weights_df.values)
 
+    print("Calculating Moran'I...")
     # 创建空间权重对象,WSP 类是pysal中的一个子类，表示"weights spatial",专用于表示处理空间权重矩阵的子类
     wsp = weights.WSP(sparse_matrix)
     #WSP无法直接参与Moran'I指数计算，所以需要将它转为w类
     w=weights.W.from_WSP(wsp)
-    w.transform = 'r' #对空间权重矩阵进行行标准化
-    print(type(w))
+    if std==True:
+        w.transform = 'r' #对空间权重矩阵进行行标准化
 
     # 如果权重矩阵是对称的，可以使用Sym的子类
     # w = weights.WSP(symmetrize='True', values=spatial_weights_df.values)
 
-    # 打印空间权重矩阵
-    print(w.sparse)
+    moran = esda.Moran(gdf[field], w)
+
+    print("Saving Result Reports...")
+    output_txt = output_file + '.txt'
+    output_png = output_file + '.png'
+
+    with open(output_txt, 'w') as f:
+        f.write('Moran\'s I: {}\n'.format(moran.I))
+        f.write('P-value: {}\n'.format(moran.p_sim))
+        f.write('Z-score: {}\n'.format(moran.z_sim))
+
+    plot_moran(moran, zstandard=True, figsize=(10, 4))
+    plt.savefig(output_png)
+    plt.close()
+    print("Done!")
