@@ -10,7 +10,7 @@ from pysal.explore import esda
 from splot.esda import plot_moran
 import matplotlib.pyplot as plt
 
-def inverse_weights(gdf,L0):
+def inverse_weights(gdf,L0,elevation):
     """
     计算反距离权矩阵
 
@@ -28,7 +28,10 @@ def inverse_weights(gdf,L0):
 
 
     # 计算距离矩阵
-    coordinates = df[['X', 'Y', 'Z']].values
+    if elevation==True:
+        coordinates = gdf[['X', 'Y', 'Z']].values
+    elif elevation==False:
+        coordinates = gdf[['X', 'Y']].values
     # coordinates = df[['X', 'Y']].values
     distances = cdist(coordinates, coordinates)
     # 应用反距离权重
@@ -40,7 +43,7 @@ def inverse_weights(gdf,L0):
 
 
 
-def gauss_weights(gdf,L0):
+def gauss_weights(gdf,L0,elevation):
     """
     计算高斯权矩阵
 
@@ -53,22 +56,25 @@ def gauss_weights(gdf,L0):
     -------------
     包含空间权重矩阵的DataFrame
     """
-    # Converting to numpy array
-    coordinates = gdf[['X', 'Y', 'Z']].values
-    # Calculating distance matrix
+    # 转为numpy数组
+    if elevation==True:
+        coordinates = gdf[['X', 'Y', 'Z']].values
+    elif elevation==False:
+        coordinates = gdf[['X', 'Y']].values
+    # 计算距离矩阵
     distances = cdist(coordinates, coordinates)
 
-    # Applying Gaussian function to calculate weights
+    # 计算高斯矩阵
     weights = np.exp(-distances**2 / (2 * L0**2))
 
-    # Creating DataFrame with weights and setting index and column names
+    # 创建空间权重矩阵的DataFrame
     spatial_weights_df = pd.DataFrame(weights, index=gdf['ID'], columns=gdf['ID'])
 
     return spatial_weights_df
 
 
 
-def threshold_weights(gdf,L0):
+def threshold_weights(gdf,L0,elevation):
     """
     计算阈值权矩阵
 
@@ -83,7 +89,10 @@ def threshold_weights(gdf,L0):
     """
     # 提取所需的字段（ID, X, Y, Z）
     df = gdf[['ID', 'X', 'Y', 'Z']].copy()
-    coordinates = df[['X', 'Y', 'Z']].values
+    if elevation==True:
+        coordinates = gdf[['X', 'Y', 'Z']].values
+    elif elevation==False:
+        coordinates = gdf[['X', 'Y']].values
 
     #计算要素间的距离
     # coordinates = df[['X', 'Y']].values
@@ -97,7 +106,7 @@ def threshold_weights(gdf,L0):
     return spatial_weights_df
 
 
-def global_moran(shp_path,field,output_file,distance_function,threshold=float('inf'),std=True):
+def global_moran(shp_path,field,output_file,distance_function,threshold=float('inf'),std=True,elevation=True):
     """
     计算全局Moran'I指数，调用该函数后会计算全局Moran'I指数，
     并在指定路径生成txt和png分析结果
@@ -110,6 +119,7 @@ def global_moran(shp_path,field,output_file,distance_function,threshold=float('i
     output_file:       输出路径，输出文件名无需写扩展名
     threshold:         距离阈值，留空则为不设置阈值
     std:               标准化方法，True为行标准化，False为不进行标准化
+    elevation:         是否在距离计算中考虑高程影响
 
     返回值：
     -------------
@@ -120,11 +130,11 @@ def global_moran(shp_path,field,output_file,distance_function,threshold=float('i
     sf = shapefile.Reader(shp_path)
     print("Calculating Weights Matrix...")
     if distance_function=='threshold':
-        spatial_weights_df = threshold_weights(gdf,threshold)
+        spatial_weights_df = threshold_weights(gdf,threshold,elevation)
     elif distance_function=='gauss':
-        spatial_weights_df = gauss_weights(sf,threshold)  #高斯权函数需要传入一个Shapefile对象
+        spatial_weights_df = gauss_weights(sf,threshold,elevation)  #高斯权函数需要传入一个Shapefile对象
     elif distance_function=='inverse':
-        spatial_weights_df = inverse_weights(gdf,threshold)
+        spatial_weights_df = inverse_weights(gdf,threshold,elevation)
     sparse_matrix=scipy.sparse.csr_matrix(spatial_weights_df.values)
 
     print("Calculating Moran'I...")
