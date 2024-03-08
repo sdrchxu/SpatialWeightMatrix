@@ -10,6 +10,7 @@ from pysal.explore import esda
 from splot.esda import plot_moran
 import matplotlib.pyplot as plt
 import os
+import math
 
 def __inverse_weights(gdf,L0,elevation):
     """
@@ -57,6 +58,7 @@ def __gauss_weights(gdf,L0,elevation):
     包含空间权重矩阵的DataFrame
     """
     sigma=1.0 #标准方差，控制了函数的曲线在尖峰周围的陡峭程度
+    gaussian_const=math.pow(math.pi*2,-0.5)
     # 转为numpy数组
     if elevation==True:
         coordinates = gdf[['X', 'Y', 'Z']].values
@@ -66,7 +68,8 @@ def __gauss_weights(gdf,L0,elevation):
     distances = cdist(coordinates, coordinates)
 
     # 计算高斯矩阵
-    weights = np.where(distances<=L0,np.where(distances==0,0,np.exp(-distances**2 / 2*sigma**2)),0)
+    # weights = np.where(distances<=L0,np.where(distances==0,0,np.exp(-distances**2 / 2*sigma**2)),0)
+    weights = np.where(distances<=L0,(gaussian_const*np.exp(-distances**2 / 2*sigma**2)),0)
 
     # 创建空间权重矩阵的DataFrame
     spatial_weights_df = pd.DataFrame(weights, index=gdf['ID'], columns=gdf['ID'])
@@ -117,7 +120,7 @@ def global_moran(shp_path,field,output_file,distance_function,threshold=float('i
     -----------
     shp_path:          shapefile文件位置
     field:             输入字段
-    distance_function: 空间关系概念化函数，可选threshold/gauss/inverse
+    distance_function: 空间关系概念化函数，可选threshold/gaussian/inverse
     output_file:       输出路径，输出文件名无需写扩展名
     threshold:         距离阈值，留空则为不设置阈值
     std:               标准化方法，True为行标准化，False为不进行标准化
@@ -132,7 +135,7 @@ def global_moran(shp_path,field,output_file,distance_function,threshold=float('i
     print("Calculating Weights Matrix...")
     if distance_function=='threshold':
         spatial_weights_df = __threshold_weights(gdf,threshold,elevation)
-    elif distance_function=='gauss':
+    elif distance_function=='gaussian':
         spatial_weights_df = __gauss_weights(gdf,threshold,elevation)  #高斯权函数需要传入一个Shapefile对象
     elif distance_function=='inverse':
         spatial_weights_df = __inverse_weights(gdf,threshold,elevation)
@@ -176,7 +179,7 @@ def global_moran_folder(folder_path, field, output_folder, distance_function, th
     folder_path:       shapefile文件夹位置
     field:             输入字段
     output_folder:     结果输出文件夹路径
-    distance_function: 空间关系概念化函数，可选threshold/gauss/inverse
+    distance_function: 空间关系概念化函数，可选threshold/gaussian/inverse
     threshold:         距离阈值，留空则为不设置阈值
     std:               标准化方法，True为行标准化，False为不进行标准化
     elevation:         是否在距离计算中考虑高程影响
