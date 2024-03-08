@@ -9,10 +9,11 @@ from scipy.spatial.distance import cdist
 from pysal.explore import esda
 from splot.esda import plot_moran
 import matplotlib.pyplot as plt
+import os
 
-def inverse_weights(gdf,L0,elevation):
+def __inverse_weights(gdf,L0,elevation):
     """
-    计算反距离权矩阵
+    计算反距离权矩阵(私有方法，不应在外部调用)
 
     参数：
     ------------
@@ -43,9 +44,9 @@ def inverse_weights(gdf,L0,elevation):
 
 
 
-def gauss_weights(gdf,L0,elevation):
+def __gauss_weights(gdf,L0,elevation):
     """
-    计算高斯权矩阵
+    计算高斯权矩阵(私有方法，不应在外部调用)
 
     参数：
     ------------
@@ -74,9 +75,9 @@ def gauss_weights(gdf,L0,elevation):
 
 
 
-def threshold_weights(gdf,L0,elevation):
+def __threshold_weights(gdf,L0,elevation):
     """
-    计算阈值权矩阵
+    计算阈值权矩阵(私有方法，不应在外部调用)
 
     参数：
     ------------
@@ -108,6 +109,7 @@ def threshold_weights(gdf,L0,elevation):
 
 def global_moran(shp_path,field,output_file,distance_function,threshold=float('inf'),std=True,elevation=True):
     """
+    主函数，计算Moran'I请调用此函数
     计算全局Moran'I指数，调用该函数后会计算全局Moran'I指数，
     并在指定路径生成txt和png分析结果
 
@@ -130,11 +132,11 @@ def global_moran(shp_path,field,output_file,distance_function,threshold=float('i
     sf = shapefile.Reader(shp_path)
     print("Calculating Weights Matrix...")
     if distance_function=='threshold':
-        spatial_weights_df = threshold_weights(gdf,threshold,elevation)
+        spatial_weights_df = __threshold_weights(gdf,threshold,elevation)
     elif distance_function=='gauss':
-        spatial_weights_df = gauss_weights(sf,threshold,elevation)  #高斯权函数需要传入一个Shapefile对象
+        spatial_weights_df = __gauss_weights(sf,threshold,elevation)  #高斯权函数需要传入一个Shapefile对象
     elif distance_function=='inverse':
-        spatial_weights_df = inverse_weights(gdf,threshold,elevation)
+        spatial_weights_df = __inverse_weights(gdf,threshold,elevation)
     sparse_matrix=scipy.sparse.csr_matrix(spatial_weights_df.values)
 
     print("Calculating Moran'I...")
@@ -163,3 +165,30 @@ def global_moran(shp_path,field,output_file,distance_function,threshold=float('i
     plt.savefig(output_png)
     plt.close()
     print("Done!")
+
+
+
+def global_moran_folder(folder_path, field, output_folder, distance_function, threshold=float('inf'), std=True, elevation=True):
+    """
+    计算给定文件夹中所有shapefile文件的Moran'I指数
+
+    参数：
+    -----------
+    folder_path:       shapefile文件夹位置
+    field:             输入字段
+    output_folder:     结果输出文件夹路径
+    distance_function: 空间关系概念化函数，可选threshold/gauss/inverse
+    threshold:         距离阈值，留空则为不设置阈值
+    std:               标准化方法，True为行标准化，False为不进行标准化
+    elevation:         是否在距离计算中考虑高程影响
+
+    返回值：
+    -------------
+    None
+    """
+    for file_name in os.listdir(folder_path):
+        if file_name.endswith(".shp"):
+            shp_path = os.path.join(folder_path, file_name)
+            output_file = os.path.join(output_folder, os.path.splitext(file_name)[0])
+            print(f"Processing {file_name}...")
+            global_moran(shp_path, field, output_file, distance_function, threshold, std, elevation)
