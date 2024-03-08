@@ -25,7 +25,7 @@ def __inverse_weights(gdf,L0,elevation):
     包含空间权重矩阵的DataFrame
     """
     # 提取所需的字段（ID, X, Y, Z）
-    df = gdf[['ID', 'X', 'Y', 'Z']].copy()
+    # df = gdf[['ID', 'X', 'Y', 'Z']].copy()
 
 
     # 计算距离矩阵
@@ -33,7 +33,6 @@ def __inverse_weights(gdf,L0,elevation):
         coordinates = gdf[['X', 'Y', 'Z']].values
     elif elevation==False:
         coordinates = gdf[['X', 'Y']].values
-    # coordinates = df[['X', 'Y']].values
     distances = cdist(coordinates, coordinates)
     # 应用反距离权重
     spatial_weights = np.where(distances==0, 0, np.where(distances <= L0,1/distances,0))
@@ -57,6 +56,7 @@ def __gauss_weights(gdf,L0,elevation):
     -------------
     包含空间权重矩阵的DataFrame
     """
+    sigma=1.0 #标准方差，控制了函数的曲线在尖峰周围的陡峭程度
     # 转为numpy数组
     if elevation==True:
         coordinates = gdf[['X', 'Y', 'Z']].values
@@ -66,7 +66,7 @@ def __gauss_weights(gdf,L0,elevation):
     distances = cdist(coordinates, coordinates)
 
     # 计算高斯矩阵
-    weights = np.exp(-distances**2 / (2 * L0**2))
+    weights = np.where(distances<=L0,np.where(distances==0,0,np.exp(-distances**2 / 2*sigma**2)),0)
 
     # 创建空间权重矩阵的DataFrame
     spatial_weights_df = pd.DataFrame(weights, index=gdf['ID'], columns=gdf['ID'])
@@ -100,7 +100,7 @@ def __threshold_weights(gdf,L0,elevation):
     distances = cdist(coordinates, coordinates)
 
     # 对得到的距离进行判断并赋值
-    spatial_weights = np.where(distances<=L0, 1, 0)
+    spatial_weights = np.where(distances<=L0, np.where(distances==0,0,1), 0)
 
     # 将空间权重矩阵保存到DataFrame中
     spatial_weights_df = pd.DataFrame(spatial_weights)
@@ -129,12 +129,11 @@ def global_moran(shp_path,field,output_file,distance_function,threshold=float('i
     """
     print("Reading Shapefile...")
     gdf = gpd.read_file(shp_path)
-    sf = shapefile.Reader(shp_path)
     print("Calculating Weights Matrix...")
     if distance_function=='threshold':
         spatial_weights_df = __threshold_weights(gdf,threshold,elevation)
     elif distance_function=='gauss':
-        spatial_weights_df = __gauss_weights(sf,threshold,elevation)  #高斯权函数需要传入一个Shapefile对象
+        spatial_weights_df = __gauss_weights(gdf,threshold,elevation)  #高斯权函数需要传入一个Shapefile对象
     elif distance_function=='inverse':
         spatial_weights_df = __inverse_weights(gdf,threshold,elevation)
     sparse_matrix=scipy.sparse.csr_matrix(spatial_weights_df.values)
