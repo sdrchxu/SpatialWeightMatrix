@@ -68,8 +68,8 @@ def __gauss_weights(gdf,L0,elevation):
     distances = cdist(coordinates, coordinates)
 
     # 计算高斯矩阵
-    # weights = np.where(distances<=L0,np.where(distances==0,0,np.exp(-distances**2 / 2*sigma**2)),0)
-    weights = np.where(distances<=L0,(gaussian_const*np.exp(-distances**2 / 2*sigma**2)),0)
+    weights = np.where(distances<=L0,np.where(distances==0,0,(gaussian_const*np.exp(-distances**2 / 2*sigma**2))),0)
+    # weights = np.where(distances<=L0,(gaussian_const*np.exp(-distances**2 / 2*sigma**2)),0)
 
     # 创建空间权重矩阵的DataFrame
     spatial_weights_df = pd.DataFrame(weights, index=gdf['ID'], columns=gdf['ID'])
@@ -139,6 +139,8 @@ def global_moran(shp_path,field,output_file,distance_function,threshold=float('i
         spatial_weights_df = __gauss_weights(gdf,threshold,elevation)  #高斯权函数需要传入一个Shapefile对象
     elif distance_function=='inverse':
         spatial_weights_df = __inverse_weights(gdf,threshold,elevation)
+    else:
+        raise ValueError("distance_function must be 'threshold', 'gaussian' or 'inverse'")
     sparse_matrix=scipy.sparse.csr_matrix(spatial_weights_df.values)
 
     print("Calculating Moran'I...")
@@ -194,3 +196,48 @@ def global_moran_folder(folder_path, field, output_folder, distance_function, th
             output_file = os.path.join(output_folder, os.path.splitext(file_name)[0])
             print(f"Processing {file_name}...")
             global_moran(shp_path, field, output_file, distance_function, threshold, std, elevation)
+
+
+def output_gauss_weights(shp_path,L0,elevation,output_file_path):
+    """
+    输出高斯权函数矩阵
+
+    参数：
+    ------------
+    shp_path:    shapefile文件路径
+    L0:          阈值
+    elevation:   是否在距离计算中考虑高程影响
+    output_file_path: 输出csv文件的路径
+
+    返回值：
+    -------------
+    空
+    """
+    gdf = gpd.read_file(shp_path)
+    sigma=1.0 #标准方差，控制了函数的曲线在尖峰周围的陡峭程度
+    gaussian_const=math.pow(math.pi*2,-0.5)#高斯常数
+    # 转为numpy数组
+    if elevation==True:
+        coordinates = gdf[['X', 'Y', 'Z']].values
+    elif elevation==False:
+        coordinates = gdf[['X', 'Y']].values
+    # 计算距离矩阵
+    distances = cdist(coordinates, coordinates,'euclidean')
+
+    # 计算高斯矩阵
+    # weights = np.where(distances<=L0,np.where(distances==0,0,(gaussian_const*np.exp(-distances**2 / 2*sigma**2))),0)
+    weights1 = np.where(distances<=L0,(np.sqrt(distances/L0)),0)
+    weights2 = np.where(distances<=L0,(gaussian_const*np.exp(-np.power(weights1,2) / 2)),0)
+    # weights=np.where(distances<=L0,np.where(distances==0,0,np.exp(-(distances/gaussian_const)**2)),0)
+
+    # 创建空间权重矩阵的DataFrame并输出csv文件
+    # spatial_weights_df = pd.DataFrame(weights, index=gdf['ID'], columns=gdf['ID'])
+    # spatial_weights_df.to_csv(output_file_path)
+
+    # 创建空间权重矩阵的DataFrame并输出txt文件
+    with open(output_file_path, 'w') as f:
+        for i in range(len(weights2)):
+            for j in range(len(weights2[i])):
+                if weights2[i][j] != 0:
+                    f.write(f"{gdf['ID'][i]} {gdf['ID'][j]} {weights2[i][j]}\n")
+    print("done")
