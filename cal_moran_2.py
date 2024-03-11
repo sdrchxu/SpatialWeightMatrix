@@ -36,7 +36,7 @@ def __inverse_weights(gdf,L0,elevation):
         coordinates = gdf[['X', 'Y']].values
     distances = cdist(coordinates, coordinates)
     # 应用反距离权重
-    spatial_weights = np.where(distances==0, 0, np.where(distances <= L0,1/distances,0))
+    spatial_weights = np.where((distances!=0)&(distances <= L0), 1/distances, 0)
     # 将空间权重矩阵保存到DataFrame中
     spatial_weights_df = pd.DataFrame(spatial_weights)
     return spatial_weights_df
@@ -58,7 +58,7 @@ def __gauss_weights(gdf,L0,elevation):
     包含空间权重矩阵的DataFrame
     """
     sigma=1.0 #标准方差，控制了函数的曲线在尖峰周围的陡峭程度
-    gaussian_const=math.pow(math.pi*2,-0.5)
+    gaussian_const=math.pow(math.pi*2,-0.5) #高斯常数
     # 转为numpy数组
     if elevation==True:
         coordinates = gdf[['X', 'Y', 'Z']].values
@@ -68,11 +68,12 @@ def __gauss_weights(gdf,L0,elevation):
     distances = cdist(coordinates, coordinates)
 
     # 计算高斯矩阵
-    weights = np.where(distances<=L0,np.where(distances==0,0,(gaussian_const*np.exp(-distances**2 / 2*sigma**2))),0)
+    weights1 = np.where(distances<=L0,(np.sqrt(distances/L0)),0)
+    weights2 = np.where((distances<=L0)&(distances!=0),(gaussian_const*np.exp(-np.power(weights1,2) / 2)),0)
     # weights = np.where(distances<=L0,(gaussian_const*np.exp(-distances**2 / 2*sigma**2)),0)
 
     # 创建空间权重矩阵的DataFrame
-    spatial_weights_df = pd.DataFrame(weights, index=gdf['ID'], columns=gdf['ID'])
+    spatial_weights_df = pd.DataFrame(weights2, index=gdf['ID'], columns=gdf['ID'])
 
     return spatial_weights_df
 
@@ -103,7 +104,7 @@ def __threshold_weights(gdf,L0,elevation):
     distances = cdist(coordinates, coordinates)
 
     # 对得到的距离进行判断并赋值
-    spatial_weights = np.where(distances<=L0, np.where(distances==0,0,1), 0)
+    spatial_weights = np.where((distances<=L0)&(distances!=0), 1, 0)
 
     # 将空间权重矩阵保存到DataFrame中
     spatial_weights_df = pd.DataFrame(spatial_weights)
@@ -228,16 +229,46 @@ def output_gauss_weights(shp_path,L0,elevation,output_file_path):
     # weights = np.where(distances<=L0,np.where(distances==0,0,(gaussian_const*np.exp(-distances**2 / 2*sigma**2))),0)
     weights1 = np.where(distances<=L0,(np.sqrt(distances/L0)),0)
     weights2 = np.where(distances<=L0,(gaussian_const*np.exp(-np.power(weights1,2) / 2)),0)
-    # weights=np.where(distances<=L0,np.where(distances==0,0,np.exp(-(distances/gaussian_const)**2)),0)
 
     # 创建空间权重矩阵的DataFrame并输出csv文件
-    # spatial_weights_df = pd.DataFrame(weights, index=gdf['ID'], columns=gdf['ID'])
-    # spatial_weights_df.to_csv(output_file_path)
+    spatial_weights_df = pd.DataFrame(weights2, index=gdf['ID'], columns=gdf['ID'])
+    spatial_weights_df.to_csv(output_file_path)
 
     # 创建空间权重矩阵的DataFrame并输出txt文件
-    with open(output_file_path, 'w') as f:
-        for i in range(len(weights2)):
-            for j in range(len(weights2[i])):
-                if weights2[i][j] != 0:
-                    f.write(f"{gdf['ID'][i]} {gdf['ID'][j]} {weights2[i][j]}\n")
+    # with open(output_file_path, 'w') as f:
+    #     for i in range(len(weights2)):
+    #         for j in range(len(weights2[i])):
+    #             if weights2[i][j] != 0:
+    #                 f.write(f"{gdf['ID'][i]} {gdf['ID'][j]} {weights2[i][j]}\n")
     print("done")
+
+
+def output_inverse_weights(shp_path,L0,elevation,output_path):
+    """
+    输出反距离权矩阵
+
+    参数：
+    ------------
+    shp_path:    shapefile文件路径
+    L0:          阈值
+    output_path: csv输出路径
+
+    返回值：
+    -------------
+    空
+    """
+    # 提取所需的字段（ID, X, Y, Z）
+    # df = gdf[['ID', 'X', 'Y', 'Z']].copy()
+
+    gdf=gpd.read_file(shp_path)
+    # 计算距离矩阵
+    if elevation==True:
+        coordinates = gdf[['X', 'Y', 'Z']].values
+    elif elevation==False:
+        coordinates = gdf[['X', 'Y']].values
+    distances = cdist(coordinates, coordinates)
+    # 应用反距离权重
+    spatial_weights = np.where(distances==0, 0, np.where(distances <= L0,1/distances,0))
+    # 将空间权重矩阵保存到DataFrame中
+    spatial_weights_df = pd.DataFrame(spatial_weights)
+    spatial_weights_df.to_csv(output_path)
