@@ -170,6 +170,7 @@ def global_moran(shp_path,field,output_file,distance_function,threshold=float('i
     plt.savefig(output_png)
     plt.close()
     print("Done!")
+    return moran.I,moran.p_sim,moran.z_sim
 
 
 
@@ -191,12 +192,22 @@ def global_moran_folder(folder_path, field, output_folder, distance_function, th
     -------------
     None
     """
+    results=[]
     for file_name in os.listdir(folder_path):
         if file_name.endswith(".shp"):
             shp_path = os.path.join(folder_path, file_name)
             output_file = os.path.join(output_folder, os.path.splitext(file_name)[0])
             print(f"Processing {file_name}...")
-            global_moran(shp_path, field, output_file, distance_function, threshold, std, elevation)
+            I,p_sim,z_sim=global_moran(shp_path, field, output_file, distance_function, threshold, std, elevation)
+            results.append({
+                "File": file_name,
+                "Moran\'s I": I,
+                "P-value": p_sim,
+                "Z-score": z_sim
+            })
+    output_csv = os.path.join(output_folder, "spatial_autocorrelation_results.csv")
+    df = pd.DataFrame(results)
+    df.to_csv(output_csv, index=False,encoding='GB2312')
 
 
 def output_gauss_weights(shp_path,L0,elevation,output_file_path):
