@@ -210,11 +210,15 @@ def global_moran_folder(folder_path, field, output_folder, distance_function, th
     df = pd.DataFrame(results)
     df.to_csv(output_csv, index=False,encoding='GB2312')
 
+
+#程序主入口
 if __name__ == "__main__":
     shp_path=arcpy.GetParameterAsText(0)
     field=arcpy.GetParameterAsText(1)
-    output_folder=arcpy.GetParameterAsText(2)
+    output_file=arcpy.GetParameterAsText(2)
     distance_function=arcpy.GetParameterAsText(3)
     threshold=arcpy.GetParameter(4)
     std=arcpy.GetParameter(5)
     elevation=arcpy.GetParameter(6)
+
+    global_moran(shp_path, field, output_file, distance_function, threshold, std, elevation)
