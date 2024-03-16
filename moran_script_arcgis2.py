@@ -39,7 +39,7 @@ def __inverse_weights(gdf,L0,elevation):
         for j in range(len(spatial_weights)):
             weight = spatial_weights[i, j]
             if weight != 0:
-                weight_info.append(f"{gdf.iloc[i]['ID']} {gdf.iloc[j]['ID']} {weight}")
+                weight_info.append(f"{int(gdf.iloc[i]['ID'])} {int(gdf.iloc[j]['ID'])} {weight}")
 
     return weight_info
 
@@ -122,8 +122,60 @@ def __threshold_weights(gdf,L0,elevation):
     return weight_info
 
 
+def __read_features_to_dataframe(shp_path, z_field, id_field):
+    """
+    从shapefile中获取X,Y,Z,ID(私有方法，不应在外部调用)   
 
-def global_moran(shp_path,field,distance_function,generate_report,threshold=float('inf'),std=True,elevation=True):
+    参数：
+    -------------
+    shp_path: shp文件路径
+    z_field:  z字段名
+    id_field: id字段名   
+
+    返回值：
+    -------------
+    DataFrame，其中columns=['X', 'Y', 'Z', 'ID']
+
+    """
+    data = []
+    with arcpy.da.SearchCursor(shp_path, ["SHAPE@XY", z_field, id_field]) as cursor:
+        for row in cursor:
+            x, y = row[0]
+            z = row[1]
+            id_value = row[2]
+            data.append((x, y, z, id_value))
+    df = pd.DataFrame(data, columns=['X', 'Y', 'Z', 'ID'])
+    return df
+
+def __read_features_to_dataframe_noele(shp_path,id_field):
+    """
+    从shapefile中获取X,Y,Z,ID(私有方法，不应在外部调用)   
+
+    参数：
+    -------------
+    shp_path: shp文件路径
+    z_field:  z字段名
+    id_field: id字段名   
+
+    返回值：
+    -------------
+    DataFrame，其中columns=['X', 'Y','ID']
+
+    """
+    data = []
+    with arcpy.da.SearchCursor(shp_path, ["SHAPE@XY", id_field]) as cursor:
+        for row in cursor:
+            x, y = row[0]
+            id_value = row[1]
+            data.append((x, y,id_value))
+    df = pd.DataFrame(data, columns=['X', 'Y', 'ID'])
+    return df
+
+
+
+
+def global_moran(shp_path,analyze_field,z_field,id_field,distance_function,generate_report,
+                 threshold=float('inf'),std=True,elevation=True):
     """
     主函数，计算Moran'I请调用此函数
     计算全局Moran'I指数，调用该函数后会计算全局Moran'I指数，
@@ -132,7 +184,9 @@ def global_moran(shp_path,field,distance_function,generate_report,threshold=floa
     参数：
     -----------
     shp_path:          shapefile文件位置
-    field:             输入字段
+    analyze_field:     用于评估空间自相关的字段
+    z_field:           高程字段
+    id_field:          唯一ID字段
     distance_function: 空间关系概念化函数，可选threshold/gaussian/inverse
     output_file:       输出路径，输出文件名无需写扩展名
     threshold:         距离阈值，留空则为不设置阈值
@@ -143,14 +197,20 @@ def global_moran(shp_path,field,distance_function,generate_report,threshold=floa
     -------------
     None
     """
-    arcpy.AddMessage("Reading Shapefile...")
+    # arcpy.AddMessage("Reading Shapefile...")
+    print("Reading Shapefile...")
     #获取dataframe
-    gdf = gpd.read_file(shp_path)
+    if elevation==True:
+        gdf = __read_features_to_dataframe(shp_path,z_field,id_field)
+    else:
+        gdf=__read_features_to_dataframe_noele(shp_path,id_field)
+
     #设置当前工作目录
     arcpy.env.workspace=os.getcwd()
     featureset=arcpy.FeatureSet(shp_path)
 
-    arcpy.AddMessage("Calculating Weights Matrix...")
+    # arcpy.AddMessage("Calculating Weights Matrix...")
+    print("Calculating Weights Matrix...")
     if distance_function=='threshold':
         spatial_weights_list = __threshold_weights(gdf,threshold,elevation)
     elif distance_function=='gaussian':
@@ -160,19 +220,27 @@ def global_moran(shp_path,field,distance_function,generate_report,threshold=floa
     else:
         raise ValueError("distance_function must be 'threshold', 'gaussian' or 'inverse'")
 
+    print("Write Weight Txt File...")
     # 将权重信息写入到内存空间的txt文件
-    txt_file="in_memory/"+os.path.basename(shp_path).replace(".shp",".txt")
+    tmp_dir=os.getenv('TEMP')
+    print(tmp_dir)
+    txt_file=tmp_dir+"\\"+os.path.basename(shp_path).replace(".shp",".txt")
     with open(txt_file, 'w',encoding="ascii") as f:
         f.write("ID\n")
         for info in spatial_weights_list:
             f.write(f"{info}\n")
 
-    arcpy.AddMessage("Calculating Moran'I...")
+    # arcpy.AddMessage("Calculating Moran'I...")
+    print("Calculating Moran'I...")
+    if std==True:
+        std_string="ROW"
+    else:
+        std_string="NONE"
     #计算Moran'I
-    SpatialAutocorrelation(featureset,Input_Field=field,Generate_Report=generate_report,Conceptualization_of_Spatial_Relationships="GET_SPATIAL_WEIGHTS_FROM_FILE",
-                       Weights_Matrix_File=txt_file,Standardization=std)
+    SpatialAutocorrelation(featureset,Input_Field=analyze_field,Generate_Report=generate_report,Conceptualization_of_Spatial_Relationships="GET_SPATIAL_WEIGHTS_FROM_FILE",
+                       Weights_Matrix_File=txt_file,Standardization=std_string)
 
-    #释放内存
+    #删除临时文件
     arcpy.Delete_management(txt_file)
 
 
