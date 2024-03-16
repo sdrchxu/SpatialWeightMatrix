@@ -80,7 +80,7 @@ def __gauss_weights(gdf,L0,elevation):
         for j in range(len(weights2)):
             weight = weights2[i, j]
             if weight != 0:
-                weight_info.append(f"{gdf.iloc[i]['ID']} {gdf.iloc[j]['ID']} {weight}")
+                weight_info.append(f"{int(gdf.iloc[i]['ID'])} {int(gdf.iloc[j]['ID'])} {weight}")
 
     return weight_info
 
@@ -117,7 +117,7 @@ def __threshold_weights(gdf,L0,elevation):
         for j in range(len(spatial_weights)):
             weight = spatial_weights[i, j]
             if weight != 0:
-                weight_info.append(f"{gdf.iloc[i]['ID']} {gdf.iloc[j]['ID']} {weight}")
+                weight_info.append(f"{int(gdf.iloc[i]['ID'])} {int(gdf.iloc[j]['ID'])} {weight}")
 
     return weight_info
 
@@ -175,7 +175,7 @@ def __read_features_to_dataframe_noele(shp_path,id_field):
 
 
 def global_moran(shp_path,analyze_field,z_field,id_field,distance_function,generate_report,
-                 threshold=float('inf'),std=True,elevation=True):
+                 threshold=float('inf'),std=False,elevation=False):
     """
     主函数，计算Moran'I请调用此函数
     计算全局Moran'I指数，调用该函数后会计算全局Moran'I指数，
@@ -197,8 +197,8 @@ def global_moran(shp_path,analyze_field,z_field,id_field,distance_function,gener
     -------------
     None
     """
-    # arcpy.AddMessage("Reading Shapefile...")
-    print("Reading Shapefile...")
+    arcpy.AddMessage("Reading Shapefile...")
+    # print("Reading Shapefile...")
     #获取dataframe
     if elevation==True:
         gdf = __read_features_to_dataframe(shp_path,z_field,id_field)
@@ -209,8 +209,8 @@ def global_moran(shp_path,analyze_field,z_field,id_field,distance_function,gener
     arcpy.env.workspace=os.getcwd()
     featureset=arcpy.FeatureSet(shp_path)
 
-    # arcpy.AddMessage("Calculating Weights Matrix...")
-    print("Calculating Weights Matrix...")
+    arcpy.AddMessage("Calculating Weights Matrix...")
+    # print("Calculating Weights Matrix...")
     if distance_function=='threshold':
         spatial_weights_list = __threshold_weights(gdf,threshold,elevation)
     elif distance_function=='gaussian':
@@ -230,8 +230,8 @@ def global_moran(shp_path,analyze_field,z_field,id_field,distance_function,gener
         for info in spatial_weights_list:
             f.write(f"{info}\n")
 
-    # arcpy.AddMessage("Calculating Moran'I...")
-    print("Calculating Moran'I...")
+    arcpy.AddMessage("Calculating Moran'I...")
+    # print("Calculating Moran'I...")
     if std==True:
         std_string="ROW"
     else:
@@ -242,5 +242,25 @@ def global_moran(shp_path,analyze_field,z_field,id_field,distance_function,gener
 
     #删除临时文件
     arcpy.Delete_management(txt_file)
+
+
+if __name__ == "__main__":
+    shp_path=arcpy.GetParameterAsText(0)
+    analyze_field=arcpy.GetParameterAsText(1)
+    z_field=arcpy.GetParameterAsText(2)
+    id_field=arcpy.GetParameterAsText(3)
+    distance_function=arcpy.GetParameterAsText(4)
+    generate_report=arcpy.GetParameter(5)
+    threshold=arcpy.GetParameter(6)
+    std=arcpy.GetParameter(7)
+    elevation=arcpy.GetParameter(8)
+
+    global_moran(shp_path,analyze_field,z_field,id_field,distance_function,generate_report,threshold,std,elevation)
+
+
+    
+    # fields=arcpy.ListFields(shp_path)
+    # for field in fields:
+    #     fields_name=fields_name.append(field.name)
 
 
