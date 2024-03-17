@@ -29,7 +29,7 @@ if __name__ == '__main__':
     distances = cdist(coordinates, coordinates)
     print("计算空间权重矩阵")
     spatial_weights = np.where((distances <= L0) & (distances != 0), 1, 0)
-    
+
     spatial_weights_length = len(spatial_weights)
     print("生成权重列表")
     weight_info = []
@@ -39,13 +39,13 @@ if __name__ == '__main__':
         weight_info = p.map(process_weights, args)
     #将嵌套列表展开
     weight_info = [item for sublist in weight_info for item in sublist]
-    
+
     print("生成txt文件")
     with open(txt_path, 'w', encoding="ascii") as f:
         f.write("ID\n")
         for info in weight_info:
             f.write(f"{info}\n")
-    
+
     time_end=time.time()
     print("运行时间：",time_end-time_start,"秒")
 

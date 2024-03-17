@@ -5,6 +5,22 @@ from arcpy.stats import SpatialAutocorrelation
 import arcpy
 import math
 import os
+from multiprocessing import Pool, cpu_count
+from functools import partial
+
+
+
+def __process_weights(args):
+    """
+    将包含权重的numpy数组转为列表
+    """
+    i, spatial_weights_length, spatial_weights, gdf = args
+    weight_info = []
+    for j in range(spatial_weights_length):
+        weight = spatial_weights[i, j]
+        if weight != 0:
+            weight_info.append(f"{gdf.iloc[i]['ID']} {gdf.iloc[j]['ID']} {weight}")
+    return weight_info
 
 
 def __inverse_weights(gdf,L0,elevation):
@@ -31,11 +47,14 @@ def __inverse_weights(gdf,L0,elevation):
 
     # 生成一个包含权重信息的列表
     weight_info = []
-    for i in range(len(spatial_weights)):
-        for j in range(len(spatial_weights)):
-            weight = spatial_weights[i, j]
-            if weight != 0:
-                weight_info.append(f"{int(gdf.iloc[i]['ID'])} {int(gdf.iloc[j]['ID'])} {weight}")
+    spatial_weights_length=len(spatial_weights)
+    #按CPU核心数分配进程
+    process_weights = partial(__process_weights, spatial_weights_length=spatial_weights_length, spatial_weights=spatial_weights, gdf=gdf)
+    with Pool(cpu_count()) as p:
+        args = [(i, spatial_weights_length, spatial_weights, gdf) for i in range(spatial_weights_length)]
+        weight_info = p.map(process_weights, args)
+    #将嵌套列表展开
+    weight_info = [item for sublist in weight_info for item in sublist]
 
     return weight_info
 
@@ -72,11 +91,13 @@ def __gauss_weights(gdf,L0,elevation):
 
     # 生成一个包含权重信息的列表
     weight_info = []
-    for i in range(len(weights2)):
-        for j in range(len(weights2)):
-            weight = weights2[i, j]
-            if weight != 0:
-                weight_info.append(f"{int(gdf.iloc[i]['ID'])} {int(gdf.iloc[j]['ID'])} {weight}")
+    spatial_weights_length=len(weights2)
+    #按CPU核心数分配进程
+    with Pool(cpu_count()) as p:
+        args = [(i, spatial_weights_length, weights2, gdf) for i in range(spatial_weights_length)]
+        weight_info = p.map(__process_weights, args)
+    #将嵌套列表展开
+    weight_info = [item for sublist in weight_info for item in sublist]
 
     return weight_info
 
@@ -109,11 +130,13 @@ def __threshold_weights(gdf,L0,elevation):
     spatial_weights = np.where((distances<=L0)&(distances!=0), 1, 0)
     # 生成一个包含权重信息的列表
     weight_info = []
-    for i in range(len(spatial_weights)):
-        for j in range(len(spatial_weights)):
-            weight = spatial_weights[i, j]
-            if weight != 0:
-                weight_info.append(f"{int(gdf.iloc[i]['ID'])} {int(gdf.iloc[j]['ID'])} {weight}")
+    spatial_weights_length=len(spatial_weights)
+    #按CPU核心数分配进程
+    with Pool(cpu_count()) as p:
+        args = [(i, spatial_weights_length, spatial_weights, gdf) for i in range(spatial_weights_length)]
+        weight_info = p.map(__process_weights, args)
+    #将嵌套列表展开
+    weight_info = [item for sublist in weight_info for item in sublist]
 
     return weight_info
 
@@ -143,6 +166,7 @@ def __read_features_to_dataframe(shp_path, z_field, id_field):
     df = pd.DataFrame(data, columns=['X', 'Y', 'Z', 'ID'])
     return df
 
+
 def __read_features_to_dataframe_noele(shp_path,id_field):
     """
     从shapefile中获取X,Y,Z,ID(私有方法，不应在外部调用)   
@@ -171,7 +195,7 @@ def __read_features_to_dataframe_noele(shp_path,id_field):
 
 
 def global_moran(shp_path,analyze_field,z_field,id_field,distance_function,generate_report,
-                 threshold=float('inf'),std='None',elevation=False):
+                threshold=float('inf'),std='None',elevation=False):
     """
     主函数，计算Moran'I请调用此函数
     计算全局Moran'I指数，调用该函数后会计算全局Moran'I指数，
@@ -239,7 +263,7 @@ def global_moran(shp_path,analyze_field,z_field,id_field,distance_function,gener
 
     #计算Moran'I
     result=SpatialAutocorrelation(featureset,Input_Field=analyze_field,Generate_Report=generate_report,Conceptualization_of_Spatial_Relationships="GET_SPATIAL_WEIGHTS_FROM_FILE",
-                       Weights_Matrix_File=txt_file,Standardization=std)
+                    Weights_Matrix_File=txt_file,Standardization=std)
     
     for msg in range(0,result.messageCount):
         arcpy.AddReturnMessage(msg)
@@ -267,10 +291,7 @@ if __name__ == "__main__":
 
     result=global_moran(shp_path,analyze_field,z_field,id_field,distance_function,generate_report,threshold,std,elevation)
     #设置输出消息
-    arcpy.AddMessage(result.getMessages())
+    # arcpy.AddMessage(result.getMessages())
     
-    # fields=arcpy.ListFields(shp_path)
-    # for field in fields:
-    #     fields_name=fields_name.append(field.name)
 
 
