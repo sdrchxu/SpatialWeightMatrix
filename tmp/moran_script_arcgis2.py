@@ -1,6 +1,10 @@
+from pysal.lib import weights
+import geopandas as gpd
 import pandas as pd
+import WeightsUtilities as WU
 import numpy as np
 from scipy.spatial.distance import cdist
+from arcpy.stats import GenerateSpatialWeightsMatrix
 from arcpy.stats import SpatialAutocorrelation
 import arcpy
 import math
@@ -254,7 +258,6 @@ if __name__ == "__main__":
     #控制进度条
     arcpy.SetProgressor("step","Loading Script...")
 
-    #获取输入参数
     shp_path=arcpy.GetParameterAsText(0)
     analyze_field=arcpy.GetParameterAsText(1)
     z_field=arcpy.GetParameterAsText(2)
@@ -269,7 +272,6 @@ if __name__ == "__main__":
     result=global_moran(shp_path,analyze_field,z_field,id_field,distance_function,generate_report,threshold,std,elevation)
 
     arcpy.AddMessage(result.getMessages())
-    arcpy.SetParameterAsText(9,result.getOutput())
     
     # fields=arcpy.ListFields(shp_path)
     # for field in fields:

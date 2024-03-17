@@ -222,3 +222,4 @@ if __name__ == "__main__":
     elevation=arcpy.GetParameter(6)
 
     global_moran(shp_path, field, output_file, distance_function, threshold, std, elevation)
+    
