@@ -171,7 +171,7 @@ def __read_features_to_dataframe_noele(shp_path,id_field):
 
 
 def global_moran(shp_path,analyze_field,z_field,id_field,distance_function,generate_report,
-                 threshold=float('inf'),std=False,elevation=False):
+                 threshold=float('inf'),std='None',elevation=False):
     """
     主函数，计算Moran'I请调用此函数
     计算全局Moran'I指数，调用该函数后会计算全局Moran'I指数，
@@ -236,14 +236,13 @@ def global_moran(shp_path,analyze_field,z_field,id_field,distance_function,gener
     arcpy.SetProgressorPosition(80)
     # arcpy.AddMessage("Calculating Moran'I...")
     # print("Calculating Moran'I...")
-    if std==True:
-        std_string="ROW"
-    else:
-        std_string="NONE"
+
     #计算Moran'I
     result=SpatialAutocorrelation(featureset,Input_Field=analyze_field,Generate_Report=generate_report,Conceptualization_of_Spatial_Relationships="GET_SPATIAL_WEIGHTS_FROM_FILE",
-                       Weights_Matrix_File=txt_file,Standardization=std_string)
-
+                       Weights_Matrix_File=txt_file,Standardization=std)
+    
+    for msg in range(0,result.messageCount):
+        arcpy.AddReturnMessage(msg)
     #删除临时文件
     arcpy.Delete_management(txt_file)
     arcpy.SetProgressorPosition(100)
@@ -267,12 +266,8 @@ if __name__ == "__main__":
 
 
     result=global_moran(shp_path,analyze_field,z_field,id_field,distance_function,generate_report,threshold,std,elevation)
-
-    arcpy.AddMessage(result.getMessages())
-    arcpy.SetParameterAsText(9,result.getOutput())
+    #设置输出消息
+    # arcpy.AddMessage(result.getMessages())
     
-    # fields=arcpy.ListFields(shp_path)
-    # for field in fields:
-    #     fields_name=fields_name.append(field.name)
 
 
