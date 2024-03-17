@@ -4,7 +4,6 @@ import numpy as np
 from pysal.lib import weights
 from scipy.sparse import csr_matrix
 import scipy
-import shapefile
 from scipy.spatial.distance import cdist
 from pysal.explore import esda
 from splot.esda import plot_moran
