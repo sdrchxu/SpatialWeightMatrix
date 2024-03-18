@@ -6,7 +6,7 @@ import os
 import arcpy
 from multiprocess import Pool, cpu_count
 
-## 该脚本用于多线程生成适于Arcgis或GeoDa空间自相关分析的空间权重矩阵文件 ##
+## 该脚本用于生成适于Arcgis或GeoDa空间自相关分析的空间权重矩阵文件,支持多线程加速 ##
 
 def process_weights(args):
     """
@@ -189,7 +189,7 @@ def __read_features_to_dataframe_noele(shp_path,id_field):
     return df
 
 
-def cal_weight_txt(shp_path,out_txt_path,z_field,id_field,distance_function,
+def cal_weight_txt(shp_path,out_path,z_field,id_field,distance_function,
                 threshold=float('inf'),elevation=False,software='arcgis'):
     """
     主函数，计算Arcgis权重矩阵文件请调用此函数
@@ -199,12 +199,13 @@ def cal_weight_txt(shp_path,out_txt_path,z_field,id_field,distance_function,
     参数：
     -----------
     shp_path:          shapefile文件位置
-    out_txt_path:      输出的txt权重文件路径
+    out_path:          输出的权重文件路径，不需要加扩展名
     z_field:           高程字段
     id_field:          唯一ID字段
     distance_function: 空间关系概念化函数，可选threshold/gaussian/inverse
     threshold:         距离阈值，留空则为不设置阈值
     elevation:         是否在距离计算中考虑高程影响
+    software:          适用于空间分析软件的格式，可选arcgis/geoda
 
     返回值：
     -------------
@@ -217,10 +218,10 @@ def cal_weight_txt(shp_path,out_txt_path,z_field,id_field,distance_function,
         gdf = __read_features_to_dataframe(shp_path,z_field,id_field)
     else:
         gdf=__read_features_to_dataframe_noele(shp_path,id_field)
+    shp_name=os.path.basename(shp_path).split('.')[0]
 
     #设置当前工作目录
     arcpy.env.workspace=os.getcwd()
-    featureset=arcpy.FeatureSet(shp_path)
 
     # arcpy.AddMessage("Calculating Weights Matrix...")
     print("Calculating Weights Matrix...")
@@ -234,18 +235,26 @@ def cal_weight_txt(shp_path,out_txt_path,z_field,id_field,distance_function,
         raise ValueError("distance_function must be 'threshold', 'gaussian' or 'inverse'")
 
     print("Generate Weight File...")
+
     # 将权重信息写入到txt文件
     if software=='arcgis':
-        with open(out_txt_path, 'w',encoding="ascii") as f:
-            f.write("ID\n")
+        out_path=out_path+'.txt'
+        with open(out_path, 'w',encoding="ascii") as f:
+            f.write(id_field+"\n")
             for info in spatial_weights_list:
                 f.write(f"{info}\n")
+
     elif software=='geoda':
+        out_path=out_path+'.gal'
+        with open(out_path, 'w',encoding="gb2312") as f:
+            f.write("0 "+str(len(gdf))+" "+shp_name+" "+id_field+"\n")
+            for info in spatial_weights_list:
+                f.write(f"{info}\n")
 
     print("Done!")
 
 def cal_weight_txt_folder(shp_folder,output_folder,z_field,id_field,distance_function,
-                threshold=float('inf'),elevation=False):
+                threshold=float('inf'),elevation=False,software="arcgis"):
     """
     计算给定文件夹中所有shapefile文件的Moran'I指数
 
@@ -258,6 +267,7 @@ def cal_weight_txt_folder(shp_folder,output_folder,z_field,id_field,distance_fun
     distance_function: 空间关系概念化函数，可选threshold/gaussian/inverse
     threshold:         距离阈值，留空则为不设置阈值
     elevation:         是否在距离计算中考虑高程影响
+    software:          适用于空间分析软件的格式，可选arcgis/geoda
 
     返回值：
     -------------
@@ -269,7 +279,7 @@ def cal_weight_txt_folder(shp_folder,output_folder,z_field,id_field,distance_fun
             output_file = os.path.join(output_folder, file_name.replace(".shp",".txt"))
             print(f"Processing {file_name}...")
             cal_weight_txt(shp_path,output_file,z_field,id_field,distance_function,
-                threshold,elevation)
+                threshold,elevation,software)
 
 
 
@@ -277,6 +287,6 @@ def cal_weight_txt_folder(shp_folder,output_folder,z_field,id_field,distance_fun
 if __name__ == "__main__":
     
     cal_weight_txt("F:\大创数据\中间产出的数据\云南省和黄淮海平原已处理好的火点\云南省逐月火点\云南省已处理好的火点_1月.shp",
-                   "D:\Lenovo\Desktop\云南大学\大创\程序代码\空间权重矩阵测试\swm测试\云南省已处理好的火点_1月.txt",'Z','ID','gaussian',55000,
-                   True)
+                   "D:\Lenovo\Desktop\云南大学\大创\程序代码\空间权重矩阵测试\swm测试\云南省已处理好的火点_1月",'Z','ID','gaussian',55000,
+                   True,software='geoda')
 

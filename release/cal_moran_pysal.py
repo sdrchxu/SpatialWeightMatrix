@@ -2,7 +2,6 @@ import geopandas as gpd
 import pandas as pd
 import numpy as np
 from pysal.lib import weights
-from scipy.sparse import csr_matrix
 import scipy
 from scipy.spatial.distance import cdist
 from pysal.explore import esda
@@ -10,6 +9,8 @@ from splot.esda import plot_moran
 import matplotlib.pyplot as plt
 import os
 import math
+
+## 该模块用于调用pysal库计算Moran'I指数，若有arcpy库，为提高计算效率，请不要使用该模块 ##
 
 def __inverse_weights(gdf,L0,elevation):
     """
@@ -204,6 +205,7 @@ def global_moran_folder(folder_path, field, output_folder, distance_function, th
                 "P-value": p_sim,
                 "Z-score": z_sim
             })
+    #输出汇总表
     output_csv = os.path.join(output_folder, "spatial_autocorrelation_results.csv")
     df = pd.DataFrame(results)
     df.to_csv(output_csv, index=False,encoding='GB2312')

@@ -7,7 +7,8 @@ import math
 import os
 from multiprocessing import Pool, cpu_count
 
-
+## 该脚本用于调用arcpy输出Moran'I指数报告，支持多线程运算 ##
+## 目前在命令行中测试通过，GeoScene Pro 2.1导入测试不通过 ##
 
 def process_weights(args):
     """

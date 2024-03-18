@@ -6,6 +6,9 @@ import arcpy
 import math
 import os
 
+## 该脚本用于调用arcpy输出Moran'I指数报告，不支持多线程运算 ##
+## 已在命令行与GeoScene Pro 2.1中测试通过 ##
+
 
 def __inverse_weights(gdf,L0,elevation):
     """
