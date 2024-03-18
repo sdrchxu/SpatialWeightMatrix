@@ -6,7 +6,7 @@ import os
 import arcpy
 from multiprocess import Pool, cpu_count
 
-
+## 该脚本用于多线程生成适于Arcgis或GeoDa空间自相关分析的空间权重矩阵文件 ##
 
 def process_weights(args):
     """
@@ -190,7 +190,7 @@ def __read_features_to_dataframe_noele(shp_path,id_field):
 
 
 def cal_weight_txt(shp_path,out_txt_path,z_field,id_field,distance_function,
-                threshold=float('inf'),elevation=False):
+                threshold=float('inf'),elevation=False,software='arcgis'):
     """
     主函数，计算Arcgis权重矩阵文件请调用此函数
     计算全局Moran'I指数，调用该函数后会计算全局Moran'I指数，
@@ -235,11 +235,41 @@ def cal_weight_txt(shp_path,out_txt_path,z_field,id_field,distance_function,
 
     print("Generate Weight File...")
     # 将权重信息写入到txt文件
-    with open(out_txt_path, 'w',encoding="ascii") as f:
-        f.write("ID\n")
-        for info in spatial_weights_list:
-            f.write(f"{info}\n")
+    if software=='arcgis':
+        with open(out_txt_path, 'w',encoding="ascii") as f:
+            f.write("ID\n")
+            for info in spatial_weights_list:
+                f.write(f"{info}\n")
+    elif software=='geoda':
+
     print("Done!")
+
+def cal_weight_txt_folder(shp_folder,output_folder,z_field,id_field,distance_function,
+                threshold=float('inf'),elevation=False):
+    """
+    计算给定文件夹中所有shapefile文件的Moran'I指数
+
+    参数：
+    -----------
+    shp_folder:        shapefile文件夹路径
+    output_folder:     结果输出文件夹路径
+    z_field:           高程字段
+    id_field:          唯一ID字段
+    distance_function: 空间关系概念化函数，可选threshold/gaussian/inverse
+    threshold:         距离阈值，留空则为不设置阈值
+    elevation:         是否在距离计算中考虑高程影响
+
+    返回值：
+    -------------
+    无
+    """
+    for file_name in os.listdir(shp_folder):
+        if file_name.endswith(".shp"):
+            shp_path = os.path.join(shp_folder, file_name)
+            output_file = os.path.join(output_folder, file_name.replace(".shp",".txt"))
+            print(f"Processing {file_name}...")
+            cal_weight_txt(shp_path,output_file,z_field,id_field,distance_function,
+                threshold,elevation)
 
 
 

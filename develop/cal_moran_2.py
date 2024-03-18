@@ -204,6 +204,7 @@ def global_moran_folder(folder_path, field, output_folder, distance_function, th
                 "P-value": p_sim,
                 "Z-score": z_sim
             })
+    #输出汇总表
     output_csv = os.path.join(output_folder, "spatial_autocorrelation_results.csv")
     df = pd.DataFrame(results)
     df.to_csv(output_csv, index=False,encoding='GB2312')
