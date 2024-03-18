@@ -250,7 +250,7 @@ def global_moran(shp_path,analyze_field,z_field,id_field,distance_function,gener
     tmp_dir=os.getenv('TEMP')
     txt_file=tmp_dir+"\\"+os.path.basename(shp_path).replace(".shp",".txt")
     with open(txt_file, 'w',encoding="ascii") as f:
-        f.write("ID\n")
+        f.write(id_field+"\n")
         for info in spatial_weights_list:
             f.write(f"{info}\n")
 

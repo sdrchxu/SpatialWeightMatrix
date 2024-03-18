@@ -1,13 +1,24 @@
 import pandas as pd
 import numpy as np
 from scipy.spatial.distance import cdist
-from arcpy.stats import SpatialAutocorrelation
-import arcpy
 import math
 import os
+import arcpy
+from multiprocess import Pool, cpu_count
 
-## 该脚本用于调用arcpy输出Moran'I指数报告，不支持多线程运算 ##
-## 已在命令行与GeoScene Pro 2.1中测试通过 ##
+## 该脚本用于批量或非批量生成适于Arcgis或GeoDa空间自相关分析的空间权重矩阵文件,支持多线程加速 ##
+
+def process_weights(args):
+    """
+    将包含权重的numpy数组转为列表
+    """
+    i, spatial_weights_length, spatial_weights, gdf = args
+    weight_info = []
+    for j in range(spatial_weights_length):
+        weight = spatial_weights[i, j]
+        if weight != 0:
+            weight_info.append(f"{int(gdf.iloc[i]['ID'])} {int(gdf.iloc[j]['ID'])} {weight}")
+    return weight_info
 
 
 def __inverse_weights(gdf,L0,elevation):
@@ -34,11 +45,13 @@ def __inverse_weights(gdf,L0,elevation):
 
     # 生成一个包含权重信息的列表
     weight_info = []
-    for i in range(len(spatial_weights)):
-        for j in range(len(spatial_weights)):
-            weight = spatial_weights[i, j]
-            if weight != 0:
-                weight_info.append(f"{int(gdf.iloc[i]['ID'])} {int(gdf.iloc[j]['ID'])} {weight}")
+    spatial_weights_length=len(spatial_weights)
+    #按CPU核心数分配进程
+    with Pool(cpu_count()) as p:
+        args = [(i, spatial_weights_length, spatial_weights, gdf) for i in range(spatial_weights_length)]
+        weight_info = p.map(process_weights, args)
+    #将嵌套列表展开
+    weight_info = [item for sublist in weight_info for item in sublist]
 
     return weight_info
 
@@ -75,11 +88,13 @@ def __gauss_weights(gdf,L0,elevation):
 
     # 生成一个包含权重信息的列表
     weight_info = []
-    for i in range(len(weights2)):
-        for j in range(len(weights2)):
-            weight = weights2[i, j]
-            if weight != 0:
-                weight_info.append(f"{int(gdf.iloc[i]['ID'])} {int(gdf.iloc[j]['ID'])} {weight}")
+    spatial_weights_length=len(weights2)
+    #按CPU核心数分配进程
+    with Pool(cpu_count()) as p:
+        args = [(i, spatial_weights_length, weights2, gdf) for i in range(spatial_weights_length)]
+        weight_info = p.map(process_weights, args)
+    #将嵌套列表展开
+    weight_info = [item for sublist in weight_info for item in sublist]
 
     return weight_info
 
@@ -112,11 +127,13 @@ def __threshold_weights(gdf,L0,elevation):
     spatial_weights = np.where((distances<=L0)&(distances!=0), 1, 0)
     # 生成一个包含权重信息的列表
     weight_info = []
-    for i in range(len(spatial_weights)):
-        for j in range(len(spatial_weights)):
-            weight = spatial_weights[i, j]
-            if weight != 0:
-                weight_info.append(f"{int(gdf.iloc[i]['ID'])} {int(gdf.iloc[j]['ID'])} {weight}")
+    spatial_weights_length=len(spatial_weights)
+    #按CPU核心数分配进程
+    with Pool(cpu_count()) as p:
+        args = [(i, spatial_weights_length, spatial_weights, gdf) for i in range(spatial_weights_length)]
+        weight_info = p.map(process_weights, args)
+    #将嵌套列表展开
+    weight_info = [item for sublist in weight_info for item in sublist]
 
     return weight_info
 
@@ -146,6 +163,7 @@ def __read_features_to_dataframe(shp_path, z_field, id_field):
     df = pd.DataFrame(data, columns=['X', 'Y', 'Z', 'ID'])
     return df
 
+
 def __read_features_to_dataframe_noele(shp_path,id_field):
     """
     从shapefile中获取X,Y,Z,ID(私有方法，不应在外部调用)   
@@ -171,49 +189,43 @@ def __read_features_to_dataframe_noele(shp_path,id_field):
     return df
 
 
-
-
-def global_moran(shp_path,analyze_field,z_field,id_field,distance_function,generate_report,
-                 threshold=float('inf'),std='None',elevation=False):
+def cal_weight_txt(shp_path,out_path,z_field,id_field,distance_function,
+                threshold=float('inf'),elevation=False,software='arcgis'):
     """
-    主函数，计算Moran'I请调用此函数
+    主函数，计算Arcgis权重矩阵文件请调用此函数
     计算全局Moran'I指数，调用该函数后会计算全局Moran'I指数，
     并在指定路径生成txt和png分析结果
 
     参数：
     -----------
     shp_path:          shapefile文件位置
-    analyze_field:     用于评估空间自相关的字段
+    out_path:          输出的权重文件路径，不需要加扩展名
     z_field:           高程字段
     id_field:          唯一ID字段
     distance_function: 空间关系概念化函数，可选threshold/gaussian/inverse
-    output_file:       输出路径，输出文件名无需写扩展名
     threshold:         距离阈值，留空则为不设置阈值
-    std:               标准化方法，"Row"为行标准化，"None"为不进行标准化
     elevation:         是否在距离计算中考虑高程影响
+    software:          适用于空间分析软件的格式，可选arcgis/geoda，arcgis:.txt/geoda:.kwt
 
     返回值：
     -------------
-    全局莫兰指数执行结果
+    无
     """
     # arcpy.AddMessage("Reading Shapefile...")
-    arcpy.SetProgressorLabel("Reading Shapefile...")
-    arcpy.SetProgressorPosition(20)
-    # print("Reading Shapefile...")
+    print("Reading Shapefile...")
     #获取dataframe
     if elevation==True:
         gdf = __read_features_to_dataframe(shp_path,z_field,id_field)
     else:
         gdf=__read_features_to_dataframe_noele(shp_path,id_field)
 
+    shp_name=os.path.basename(shp_path).split('.')[0]
+
     #设置当前工作目录
     arcpy.env.workspace=os.getcwd()
-    featureset=arcpy.FeatureSet(shp_path)
 
     # arcpy.AddMessage("Calculating Weights Matrix...")
-    arcpy.SetProgressorLabel("Calculating Weights Matrix...")
-    arcpy.SetProgressorPosition(40)
-    # print("Calculating Weights Matrix...")
+    print("Calculating Weights Matrix...")
     if distance_function=='threshold':
         spatial_weights_list = __threshold_weights(gdf,threshold,elevation)
     elif distance_function=='gaussian':
@@ -223,54 +235,63 @@ def global_moran(shp_path,analyze_field,z_field,id_field,distance_function,gener
     else:
         raise ValueError("distance_function must be 'threshold', 'gaussian' or 'inverse'")
 
-    # print("Generate Weight File...")
-    arcpy.SetProgressorLabel("Generate Weight File...")
-    arcpy.SetProgressorPosition(60)
-    # 将权重信息写入到内存空间的txt文件
-    tmp_dir=os.getenv('TEMP')
-    print(tmp_dir)
-    txt_file=tmp_dir+"\\"+os.path.basename(shp_path).replace(".shp",".txt")
-    with open(txt_file, 'w',encoding="ascii") as f:
-        f.write(id_field+"\n")
-        for info in spatial_weights_list:
-            f.write(f"{info}\n")
+    print("Generate Weight File...")
 
-    arcpy.SetProgressorLabel("Calculating Moran'I...")
-    arcpy.SetProgressorPosition(80)
-    # arcpy.AddMessage("Calculating Moran'I...")
-    # print("Calculating Moran'I...")
+    # 将权重信息写入到txt文件
+    if software=='arcgis':
+        out_path=out_path+'.txt'
+        with open(out_path, 'w',encoding="ascii") as f:
+            f.write(id_field+"\n")
+            for info in spatial_weights_list:
+                f.write(f"{info}\n")
 
-    #计算Moran'I
-    result=SpatialAutocorrelation(featureset,Input_Field=analyze_field,Generate_Report=generate_report,Conceptualization_of_Spatial_Relationships="GET_SPATIAL_WEIGHTS_FROM_FILE",
-                       Weights_Matrix_File=txt_file,Standardization=std)
-    
-    for msg in range(0,result.messageCount):
-        arcpy.AddReturnMessage(msg)
-    #删除临时文件
-    arcpy.Delete_management(txt_file)
-    arcpy.SetProgressorPosition(100)
-    return result
+    elif software=='geoda':
+        out_path=out_path+'.kwt'
+        with open(out_path, 'w',encoding="gb2312") as f:
+            f.write("0 "+str(len(gdf))+" "+shp_name+" "+id_field+"\n")
+            for info in spatial_weights_list:
+                f.write(f"{info}\n")
+
+    print("Done!")
+
+
+
+def cal_weight_txt_folder(shp_folder,output_folder,z_field,id_field,distance_function,
+                threshold=float('inf'),elevation=False,software="arcgis"):
+    """
+    计算给定文件夹中所有shapefile文件的Moran'I指数
+
+    参数：
+    -----------
+    shp_folder:        shapefile文件夹路径
+    output_folder:     结果输出文件夹路径
+    z_field:           高程字段
+    id_field:          唯一ID字段
+    distance_function: 空间关系概念化函数，可选threshold/gaussian/inverse
+    threshold:         距离阈值，留空则为不设置阈值
+    elevation:         是否在距离计算中考虑高程影响
+    software:          适用于空间分析软件的格式，可选arcgis/geoda
+
+    返回值：
+    -------------
+    无
+    """
+    for file_name in os.listdir(shp_folder):
+        if file_name.endswith(".shp"):
+            shp_path = os.path.join(shp_folder, file_name)
+            output_file = os.path.join(output_folder, file_name.split('.')[0])
+            print(f"Processing {file_name}...")
+            cal_weight_txt(shp_path,output_file,z_field,id_field,distance_function,
+                threshold,elevation,software)
+
+
 
 
 if __name__ == "__main__":
-    #控制进度条
-    arcpy.SetProgressor("step","Loading Script...")
-
-    #获取输入参数
-    shp_path=arcpy.GetParameterAsText(0)
-    analyze_field=arcpy.GetParameterAsText(1)
-    z_field=arcpy.GetParameterAsText(2)
-    id_field=arcpy.GetParameterAsText(3)
-    distance_function=arcpy.GetParameterAsText(4)
-    generate_report=arcpy.GetParameter(5)
-    threshold=arcpy.GetParameter(6)
-    std=arcpy.GetParameterAsText(7)
-    elevation=arcpy.GetParameter(8)
-
-
-    result=global_moran(shp_path,analyze_field,z_field,id_field,distance_function,generate_report,threshold,std,elevation)
-    #设置输出消息
-    # arcpy.AddMessage(result.getMessages())
     
-
+    # cal_weight_txt("F:\大创数据\中间产出的数据\云南省和黄淮海平原已处理好的火点\云南省逐月火点\云南省已处理好的火点_1月.shp",
+    #                "D:\Lenovo\Desktop\云南大学\大创\程序代码\空间权重矩阵测试\swm测试\云南省已处理好的火点_1月",'Z','ID','gaussian',55000,
+    #                True,software='geoda')
+    cal_weight_txt_folder("F:\大创数据\中间产出的数据\对云南省和黄淮海平原创建的样方\黄淮海平原","D:\Lenovo\Desktop\云南大学\大创\程序代码\空间权重矩阵测试\swm测试\\tmp",
+                          'Z','ID','gaussian',55000,True,software='arcgis')
 
