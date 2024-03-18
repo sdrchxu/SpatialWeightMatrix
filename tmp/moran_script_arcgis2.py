@@ -6,11 +6,10 @@ import arcpy
 import math
 import os
 from multiprocessing import Pool, cpu_count
-from functools import partial
 
 
 
-def __process_weights(args):
+def process_weights(args):
     """
     将包含权重的numpy数组转为列表
     """
@@ -19,8 +18,9 @@ def __process_weights(args):
     for j in range(spatial_weights_length):
         weight = spatial_weights[i, j]
         if weight != 0:
-            weight_info.append(f"{gdf.iloc[i]['ID']} {gdf.iloc[j]['ID']} {weight}")
+            weight_info.append(f"{int(gdf.iloc[i]['ID'])} {int(gdf.iloc[j]['ID'])} {weight}")
     return weight_info
+
 
 
 def __inverse_weights(gdf,L0,elevation):
@@ -49,7 +49,6 @@ def __inverse_weights(gdf,L0,elevation):
     weight_info = []
     spatial_weights_length=len(spatial_weights)
     #按CPU核心数分配进程
-    process_weights = partial(__process_weights, spatial_weights_length=spatial_weights_length, spatial_weights=spatial_weights, gdf=gdf)
     with Pool(cpu_count()) as p:
         args = [(i, spatial_weights_length, spatial_weights, gdf) for i in range(spatial_weights_length)]
         weight_info = p.map(process_weights, args)
@@ -95,7 +94,7 @@ def __gauss_weights(gdf,L0,elevation):
     #按CPU核心数分配进程
     with Pool(cpu_count()) as p:
         args = [(i, spatial_weights_length, weights2, gdf) for i in range(spatial_weights_length)]
-        weight_info = p.map(__process_weights, args)
+        weight_info = p.map(process_weights, args)
     #将嵌套列表展开
     weight_info = [item for sublist in weight_info for item in sublist]
 
@@ -134,7 +133,7 @@ def __threshold_weights(gdf,L0,elevation):
     #按CPU核心数分配进程
     with Pool(cpu_count()) as p:
         args = [(i, spatial_weights_length, spatial_weights, gdf) for i in range(spatial_weights_length)]
-        weight_info = p.map(__process_weights, args)
+        weight_info = p.map(process_weights, args)
     #将嵌套列表展开
     weight_info = [item for sublist in weight_info for item in sublist]
 
@@ -199,7 +198,7 @@ def global_moran(shp_path,analyze_field,z_field,id_field,distance_function,gener
     """
     主函数，计算Moran'I请调用此函数
     计算全局Moran'I指数，调用该函数后会计算全局Moran'I指数，
-    并在指定路径生成txt和png分析结果
+    并返回PeoProcessing工具执行结果
 
     参数：
     -----------
@@ -208,9 +207,9 @@ def global_moran(shp_path,analyze_field,z_field,id_field,distance_function,gener
     z_field:           高程字段
     id_field:          唯一ID字段
     distance_function: 空间关系概念化函数，可选threshold/gaussian/inverse
-    output_file:       输出路径，输出文件名无需写扩展名
+    generate_report:   是否输出报告
     threshold:         距离阈值，留空则为不设置阈值
-    std:               标准化方法，True为行标准化，False为不进行标准化
+    std:               标准化方法，"Row"为行标准化，"None"为不进行标准化
     elevation:         是否在距离计算中考虑高程影响
 
     返回值：
@@ -231,7 +230,6 @@ def global_moran(shp_path,analyze_field,z_field,id_field,distance_function,gener
     arcpy.env.workspace=os.getcwd()
     featureset=arcpy.FeatureSet(shp_path)
 
-    # arcpy.AddMessage("Calculating Weights Matrix...")
     arcpy.SetProgressorLabel("Calculating Weights Matrix...")
     arcpy.SetProgressorPosition(40)
     # print("Calculating Weights Matrix...")
@@ -247,9 +245,8 @@ def global_moran(shp_path,analyze_field,z_field,id_field,distance_function,gener
     # print("Generate Weight File...")
     arcpy.SetProgressorLabel("Generate Weight File...")
     arcpy.SetProgressorPosition(60)
-    # 将权重信息写入到内存空间的txt文件
+    # 将权重信息写入到系统临时文件夹的txt文件
     tmp_dir=os.getenv('TEMP')
-    print(tmp_dir)
     txt_file=tmp_dir+"\\"+os.path.basename(shp_path).replace(".shp",".txt")
     with open(txt_file, 'w',encoding="ascii") as f:
         f.write("ID\n")
@@ -285,8 +282,18 @@ if __name__ == "__main__":
     distance_function=arcpy.GetParameterAsText(4)
     generate_report=arcpy.GetParameter(5)
     threshold=arcpy.GetParameter(6)
-    std=arcpy.GetParameter(7)
+    std=arcpy.GetParameterAsText(7)
     elevation=arcpy.GetParameter(8)
+
+    # shp_path="F:\大创数据\中间产出的数据\云南省和黄淮海平原已处理好的火点\云南省逐月火点\云南省已处理好的火点_1月.shp"
+    # analyze_field="FRP"
+    # z_field="Z"
+    # id_field="ID"
+    # distance_function="inverse"
+    # generate_report=True
+    # threshold=10000
+    # std="Row"
+    # elevation=True
 
 
     result=global_moran(shp_path,analyze_field,z_field,id_field,distance_function,generate_report,threshold,std,elevation)

@@ -15,14 +15,11 @@ def process_weights(args):
             weight_info.append(f"{gdf.iloc[i]['ID']} {gdf.iloc[j]['ID']} {weight}")
     return weight_info
 
-if __name__ == '__main__':
-    time_start = time.time()
-    shp_path="F:\\大创数据\\中间产出的数据\\云南省和黄淮海平原已处理好的火点\\黄淮海平原逐月火点\\黄淮海平原已处理好的火点_10月.shp"
-    swm_path="D:\\Lenovo\\Desktop\\云南大学\\大创\\程序代码\\空间权重矩阵测试\\swm测试\\黄淮海平原已处理好的火点_10月.swm"
+def run(shp_path):
+    
     txt_path="D:\\Lenovo\\Desktop\\云南大学\\大创\\程序代码\\空间权重矩阵测试\\swm测试\\黄淮海平原已处理好的火点_10月.txt"
     print("读取shp文件")
     gdf = gpd.read_file(shp_path)
-    df = gdf[['ID', 'X', 'Y', 'Z']].copy()
     coordinates = gdf[['X', 'Y', 'Z']].values
     print("计算要素距离矩阵")
     L0 = 55000
@@ -46,6 +43,12 @@ if __name__ == '__main__':
         for info in weight_info:
             f.write(f"{info}\n")
 
+
+
+if __name__ == '__main__':
+    shp_path="F:\\大创数据\\中间产出的数据\\云南省和黄淮海平原已处理好的火点\\黄淮海平原逐月火点\\黄淮海平原已处理好的火点_10月.shp"
+    time_start = time.time()
+    run(shp_path)
     time_end=time.time()
     print("运行时间：",time_end-time_start,"秒")
 
