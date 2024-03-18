@@ -205,7 +205,7 @@ def cal_weight_txt(shp_path,out_path,z_field,id_field,distance_function,
     distance_function: 空间关系概念化函数，可选threshold/gaussian/inverse
     threshold:         距离阈值，留空则为不设置阈值
     elevation:         是否在距离计算中考虑高程影响
-    software:          适用于空间分析软件的格式，可选arcgis/geoda
+    software:          适用于空间分析软件的格式，可选arcgis/geoda，arcgis:.txt/geoda:.kwt
 
     返回值：
     -------------
@@ -218,6 +218,7 @@ def cal_weight_txt(shp_path,out_path,z_field,id_field,distance_function,
         gdf = __read_features_to_dataframe(shp_path,z_field,id_field)
     else:
         gdf=__read_features_to_dataframe_noele(shp_path,id_field)
+
     shp_name=os.path.basename(shp_path).split('.')[0]
 
     #设置当前工作目录
@@ -245,13 +246,15 @@ def cal_weight_txt(shp_path,out_path,z_field,id_field,distance_function,
                 f.write(f"{info}\n")
 
     elif software=='geoda':
-        out_path=out_path+'.gal'
+        out_path=out_path+'.kwt'
         with open(out_path, 'w',encoding="gb2312") as f:
             f.write("0 "+str(len(gdf))+" "+shp_name+" "+id_field+"\n")
             for info in spatial_weights_list:
                 f.write(f"{info}\n")
 
     print("Done!")
+
+
 
 def cal_weight_txt_folder(shp_folder,output_folder,z_field,id_field,distance_function,
                 threshold=float('inf'),elevation=False,software="arcgis"):
@@ -276,7 +279,7 @@ def cal_weight_txt_folder(shp_folder,output_folder,z_field,id_field,distance_fun
     for file_name in os.listdir(shp_folder):
         if file_name.endswith(".shp"):
             shp_path = os.path.join(shp_folder, file_name)
-            output_file = os.path.join(output_folder, file_name.replace(".shp",".txt"))
+            output_file = os.path.join(output_folder, file_name.split('.')[0])
             print(f"Processing {file_name}...")
             cal_weight_txt(shp_path,output_file,z_field,id_field,distance_function,
                 threshold,elevation,software)
