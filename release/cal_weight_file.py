@@ -5,6 +5,7 @@ import math
 import os
 import arcpy
 from multiprocess import Pool, cpu_count
+import gc
 
 ## 该脚本用于批量或非批量生成适于Arcgis或GeoDa空间自相关分析的空间权重矩阵文件,支持多线程加速 ##
 
@@ -252,6 +253,9 @@ def cal_weight_txt(shp_path,out_path,z_field,id_field,distance_function,
             for info in spatial_weights_list:
                 f.write(f"{info}\n")
 
+    del spatial_weights_list
+    gc.collect()
+
     print("Done!")
 
 
@@ -292,6 +296,6 @@ if __name__ == "__main__":
     # cal_weight_txt("F:\大创数据\中间产出的数据\云南省和黄淮海平原已处理好的火点\云南省逐月火点\云南省已处理好的火点_1月.shp",
     #                "D:\Lenovo\Desktop\云南大学\大创\程序代码\空间权重矩阵测试\swm测试\云南省已处理好的火点_1月",'Z','ID','gaussian',55000,
     #                True,software='geoda')
-    cal_weight_txt_folder("F:\大创数据\中间产出的数据\对云南省和黄淮海平原创建的样方\黄淮海平原","D:\Lenovo\Desktop\云南大学\大创\程序代码\空间权重矩阵测试\swm测试\\tmp",
-                          'Z','ID','gaussian',55000,True,software='arcgis')
+    cal_weight_txt_folder("F:\大创数据\中间产出的数据\对云南省和黄淮海平原创建的样方\黄淮海平原","D:\Lenovo\Desktop\云南大学\大创\程序代码\空间权重矩阵测试\空间权重矩阵中间文件\考虑高程\\arcgis",
+                          'Z','ID','inverse',elevation=True,threshold=55000,software='arcgis')
 

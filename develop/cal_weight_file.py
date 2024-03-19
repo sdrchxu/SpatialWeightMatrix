@@ -5,6 +5,7 @@ import math
 import os
 import arcpy
 from multiprocess import Pool, cpu_count
+import gc
 
 ## 该脚本用于批量或非批量生成适于Arcgis或GeoDa空间自相关分析的空间权重矩阵文件,支持多线程加速 ##
 
@@ -251,6 +252,8 @@ def cal_weight_txt(shp_path,out_path,z_field,id_field,distance_function,
             f.write("0 "+str(len(gdf))+" "+shp_name+" "+id_field+"\n")
             for info in spatial_weights_list:
                 f.write(f"{info}\n")
+    del spatial_weights_list
+    gc.collect()
 
     print("Done!")
 
