@@ -6,6 +6,9 @@ import arcpy
 import math
 import os
 
+## 该脚本用于调用arcpy输出Moran'I指数报告，不支持多线程运算 ##
+## 已在命令行与GeoScene Pro 2.1中测试通过 ##
+
 
 def __inverse_weights(gdf,L0,elevation):
     """
@@ -228,7 +231,7 @@ def global_moran(shp_path,analyze_field,z_field,id_field,distance_function,gener
     print(tmp_dir)
     txt_file=tmp_dir+"\\"+os.path.basename(shp_path).replace(".shp",".txt")
     with open(txt_file, 'w',encoding="ascii") as f:
-        f.write("ID\n")
+        f.write(id_field+"\n")
         for info in spatial_weights_list:
             f.write(f"{info}\n")
 

@@ -292,10 +292,25 @@ def cal_weight_txt_folder(shp_folder,output_folder,z_field,id_field,distance_fun
 
 
 if __name__ == "__main__":
-    
-    # cal_weight_txt("F:\大创数据\中间产出的数据\云南省和黄淮海平原已处理好的火点\云南省逐月火点\云南省已处理好的火点_1月.shp",
-    #                "D:\Lenovo\Desktop\云南大学\大创\程序代码\空间权重矩阵测试\swm测试\云南省已处理好的火点_1月",'Z','ID','gaussian',55000,
-    #                True,software='geoda')
-    cal_weight_txt_folder("F:\大创数据\中间产出的数据\对云南省和黄淮海平原创建的样方\黄淮海平原","D:\Lenovo\Desktop\云南大学\大创\程序代码\空间权重矩阵测试\swm测试\\tmp",
-                          'Z','ID','gaussian',55000,True,software='arcgis')
+    #在此处设置参数
+
+    shp_path=None
+    out_path=None
+
+    shp_folder=None
+    output_folder=None
+
+    z_field=None
+    id_field=None
+    distance_function=None
+    threshold=None
+    elevation=None
+    software=None
+    thread_num=None
+
+    cal_weight_txt(shp_path,out_path,z_field,id_field,distance_function,
+                   threshold,elevation,software,thread_num)
+
+    cal_weight_txt_folder(shp_folder,output_folder,z_field,id_field,distance_function,
+                          threshold,elevation,software,thread_num)
 

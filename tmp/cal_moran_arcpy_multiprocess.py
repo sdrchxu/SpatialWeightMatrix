@@ -7,7 +7,8 @@ import math
 import os
 from multiprocessing import Pool, cpu_count
 
-
+## 该脚本用于调用arcpy输出Moran'I指数报告，支持多线程运算 ##
+## 目前在命令行中测试通过，GeoScene Pro 2.1导入测试不通过 ##
 
 def process_weights(args):
     """
@@ -249,7 +250,7 @@ def global_moran(shp_path,analyze_field,z_field,id_field,distance_function,gener
     tmp_dir=os.getenv('TEMP')
     txt_file=tmp_dir+"\\"+os.path.basename(shp_path).replace(".shp",".txt")
     with open(txt_file, 'w',encoding="ascii") as f:
-        f.write("ID\n")
+        f.write(id_field+"\n")
         for info in spatial_weights_list:
             f.write(f"{info}\n")
 
@@ -284,16 +285,6 @@ if __name__ == "__main__":
     threshold=arcpy.GetParameter(6)
     std=arcpy.GetParameterAsText(7)
     elevation=arcpy.GetParameter(8)
-
-    # shp_path="F:\大创数据\中间产出的数据\云南省和黄淮海平原已处理好的火点\云南省逐月火点\云南省已处理好的火点_1月.shp"
-    # analyze_field="FRP"
-    # z_field="Z"
-    # id_field="ID"
-    # distance_function="inverse"
-    # generate_report=True
-    # threshold=10000
-    # std="Row"
-    # elevation=True
 
 
     result=global_moran(shp_path,analyze_field,z_field,id_field,distance_function,generate_report,threshold,std,elevation)

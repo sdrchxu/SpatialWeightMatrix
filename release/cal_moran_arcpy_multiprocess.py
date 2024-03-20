@@ -286,17 +286,6 @@ if __name__ == "__main__":
     std=arcpy.GetParameterAsText(7)
     elevation=arcpy.GetParameter(8)
 
-    #这样直接在命令行里运行能跑通，但是在Arcgis里运行脚本却不行
-    # shp_path="F:\大创数据\中间产出的数据\云南省和黄淮海平原已处理好的火点\云南省逐月火点\云南省已处理好的火点_1月.shp"
-    # analyze_field="FRP"
-    # z_field="Z"
-    # id_field="ID"
-    # distance_function="inverse"
-    # generate_report=True
-    # threshold=10000
-    # std="Row"
-    # elevation=True
-
 
     result=global_moran(shp_path,analyze_field,z_field,id_field,distance_function,generate_report,threshold,std,elevation)
     #设置输出消息
