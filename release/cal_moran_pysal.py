@@ -176,7 +176,7 @@ def global_moran(shp_path,field,output_file,distance_function,threshold=float('i
 
 def global_moran_folder(folder_path, field, output_folder, distance_function, threshold=float('inf'), std=True, elevation=True):
     """
-    计算给定文件夹中所有shapefile文件的Moran'I指数
+    计算给定文件夹中所有shapefile文件的Moran'I指数，并输出每个要素的计算结果与汇总表
 
     参数：
     -----------

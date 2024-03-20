@@ -4,7 +4,7 @@ from scipy.spatial.distance import cdist
 import math
 import os
 import arcpy
-from multiprocess import Pool, cpu_count
+from multiprocessing import Pool, cpu_count
 import gc
 
 ## 该脚本用于批量或非批量生成适于Arcgis或GeoDa空间自相关分析的空间权重矩阵文件,支持多线程加速 ##
@@ -22,7 +22,7 @@ def process_weights(args):
     return weight_info
 
 
-def __inverse_weights(gdf,L0,elevation):
+def __inverse_weights(gdf,L0,elevation,thread_num):
     """
     计算反距离权矩阵(私有方法，不应在外部调用)
 
@@ -48,7 +48,7 @@ def __inverse_weights(gdf,L0,elevation):
     weight_info = []
     spatial_weights_length=len(spatial_weights)
     #按CPU核心数分配进程
-    with Pool(cpu_count()) as p:
+    with Pool(thread_num) as p:
         args = [(i, spatial_weights_length, spatial_weights, gdf) for i in range(spatial_weights_length)]
         weight_info = p.map(process_weights, args)
     #将嵌套列表展开
@@ -59,7 +59,7 @@ def __inverse_weights(gdf,L0,elevation):
 
 
 
-def __gauss_weights(gdf,L0,elevation):
+def __gauss_weights(gdf,L0,elevation,thread_num):
     """
     计算高斯权矩阵(私有方法，不应在外部调用)
 
@@ -91,7 +91,7 @@ def __gauss_weights(gdf,L0,elevation):
     weight_info = []
     spatial_weights_length=len(weights2)
     #按CPU核心数分配进程
-    with Pool(cpu_count()) as p:
+    with Pool(thread_num) as p:
         args = [(i, spatial_weights_length, weights2, gdf) for i in range(spatial_weights_length)]
         weight_info = p.map(process_weights, args)
     #将嵌套列表展开
@@ -101,7 +101,7 @@ def __gauss_weights(gdf,L0,elevation):
 
 
 
-def __threshold_weights(gdf,L0,elevation):
+def __threshold_weights(gdf,L0,elevation,thread_num):
     """
     计算阈值权矩阵(私有方法，不应在外部调用)
 
@@ -130,7 +130,7 @@ def __threshold_weights(gdf,L0,elevation):
     weight_info = []
     spatial_weights_length=len(spatial_weights)
     #按CPU核心数分配进程
-    with Pool(cpu_count()) as p:
+    with Pool(thread_num) as p:
         args = [(i, spatial_weights_length, spatial_weights, gdf) for i in range(spatial_weights_length)]
         weight_info = p.map(process_weights, args)
     #将嵌套列表展开
@@ -191,7 +191,7 @@ def __read_features_to_dataframe_noele(shp_path,id_field):
 
 
 def cal_weight_txt(shp_path,out_path,z_field,id_field,distance_function,
-                threshold=float('inf'),elevation=False,software='arcgis'):
+                threshold=float('inf'),elevation=False,software='arcgis',thread_num=cpu_count()):
     """
     主函数，计算Arcgis权重矩阵文件请调用此函数
     计算全局Moran'I指数，调用该函数后会计算全局Moran'I指数，
@@ -207,6 +207,7 @@ def cal_weight_txt(shp_path,out_path,z_field,id_field,distance_function,
     threshold:         距离阈值，留空则为不设置阈值
     elevation:         是否在距离计算中考虑高程影响
     software:          适用于空间分析软件的格式，可选arcgis/geoda，arcgis:.txt/geoda:.kwt
+    thread_num:        使用的线程数，不应设置为大于CPU线程的值，默认使用全部CPU线程
 
     返回值：
     -------------
@@ -228,11 +229,11 @@ def cal_weight_txt(shp_path,out_path,z_field,id_field,distance_function,
     # arcpy.AddMessage("Calculating Weights Matrix...")
     print("Calculating Weights Matrix...")
     if distance_function=='threshold':
-        spatial_weights_list = __threshold_weights(gdf,threshold,elevation)
+        spatial_weights_list = __threshold_weights(gdf,threshold,elevation,thread_num)
     elif distance_function=='gaussian':
-        spatial_weights_list = __gauss_weights(gdf,threshold,elevation)  #高斯权函数需要传入一个Shapefile对象
+        spatial_weights_list = __gauss_weights(gdf,threshold,elevation,thread_num)  
     elif distance_function=='inverse':
-        spatial_weights_list = __inverse_weights(gdf,threshold,elevation)
+        spatial_weights_list = __inverse_weights(gdf,threshold,elevation,thread_num)
     else:
         raise ValueError("distance_function must be 'threshold', 'gaussian' or 'inverse'")
 
@@ -260,7 +261,7 @@ def cal_weight_txt(shp_path,out_path,z_field,id_field,distance_function,
 
 
 def cal_weight_txt_folder(shp_folder,output_folder,z_field,id_field,distance_function,
-                threshold=float('inf'),elevation=False,software="arcgis"):
+                threshold=float('inf'),elevation=False,software="arcgis",thread_num=cpu_count()):
     """
     计算给定文件夹中所有shapefile文件的Moran'I指数
 
@@ -285,7 +286,7 @@ def cal_weight_txt_folder(shp_folder,output_folder,z_field,id_field,distance_fun
             output_file = os.path.join(output_folder, file_name.split('.')[0])
             print(f"Processing {file_name}...")
             cal_weight_txt(shp_path,output_file,z_field,id_field,distance_function,
-                threshold,elevation,software)
+                threshold,elevation,software,thread_num)
 
 
 
