@@ -38,7 +38,9 @@ global_moran_folder(folder_path, field, output_folder, distance_function, thresh
 ~~~
 ### 使用cal_moran_arcpy(_multiprocess)
 **必须为Windows操作系统，需要Arcpy模块**      
-该脚本可导入Arcgis或GeoScene系列软件的自定义工具箱中使用，获得与Arcgis原生工具箱相似的体验。请优先使用带"multiprocess"后缀的脚本，该脚本支持了多核并行计算，目前已知此脚本在部分GeoScene Pro的图形化界面中可能报错：“pickle.PicklingError: Can't pickle <functionprocess weights at0x0000022901A3A168>: attribute lookup   process weights on  mainfailed”。若出现此问题，请在命令行中使用脚本或在图形化界面中使用不带"multiprocess"后缀的脚本。       
+该脚本可导入Arcgis或GeoScene系列软件的自定义工具箱中使用，获得与Arcgis原生工具箱相似的体验。请优先使用带"multiprocess"后缀的脚本，该脚本支持了多核并行计算，目前已知此脚本在部分GeoScene Pro的图形化界面中可能报错：“pickle.PicklingError: Can't pickle <functionprocess weights at0x0000022901A3A168>: attribute lookup   process weights on  mainfailed”。若出现此问题，请在命令行中使用脚本或在图形化界面中使用不带"multiprocess"后缀的脚本。
+> 目前已知可能引发报错的原因是Arcgis Pro或GeoScene Pro在运行时不允许有多个python解释器同时运行，因此限制了多进程部分代码的运行，关闭Arcgis Pro后可在命令行中正常运行。         
+      
 1. 在Arcgis python包管理器中查看是否包含了下列模块，若缺少，请转到“添加包”
 页面安装  
 ~~~
@@ -46,11 +48,13 @@ conda install pandas
 conda install scipy
 conda install numpy
 ~~~
-![GeoScene Pro python包管理页](./picture/1.png)
+
 2. 请优先考虑使用realease文件夹中的**带高程空间自相关工具箱.tbx**，在Arcgis，Arcgis Pro的目录窗格/工具箱右键菜单中直接添加工具箱即可。若出现导入异常，则进行如下步骤：
 > 1. 打开Arcgis工程的目录窗格/我的工具箱/导入脚本，脚本文件选择cal_moran_arcpy(_multiprocess).py，参数设置如下图所示：
 ![设置脚本参数](./picture/2.png)
-> 2. 双击设置好的脚本，填写参数后运行
+> 2. 双击设置好的脚本，填写参数后运行      
+
+![GeoScene Pro python包管理页](./picture/1.png)
 3. 若需要在命令行环境中运行脚本，请填写
 ~~~python
 if __name__ == "__main__":

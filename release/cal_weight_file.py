@@ -297,19 +297,19 @@ if __name__ == "__main__":
     shp_path=None
     out_path=None
 
-    shp_folder=None
-    output_folder=None
+    shp_folder='F:\大创数据\中间产出的数据\对云南省和黄淮海平原创建的样方\云南省'
+    output_folder='D:\Lenovo\Desktop\云南大学\大创\程序代码\空间权重矩阵测试\空间权重矩阵中间文件\考虑高程\\geoda'
 
-    z_field=None
-    id_field=None
-    distance_function=None
-    threshold=None
-    elevation=None
-    software=None
-    thread_num=None
+    z_field='Z'
+    id_field='ID'
+    distance_function='inverse'
+    threshold=55000
+    elevation=True
+    software='geoda'
+    thread_num=16
 
-    cal_weight_txt(shp_path,out_path,z_field,id_field,distance_function,
-                   threshold,elevation,software,thread_num)
+    # cal_weight_txt(shp_path,out_path,z_field,id_field,distance_function,
+    #                threshold,elevation,software,thread_num)
 
     cal_weight_txt_folder(shp_folder,output_folder,z_field,id_field,distance_function,
                           threshold,elevation,software,thread_num)
