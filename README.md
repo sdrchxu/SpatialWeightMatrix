@@ -78,7 +78,7 @@ cal_weight_txt_folder(shp_folder,output_folder,z_field,id_field,distance_functio
 ### 什么是空间自相关？    
 抛开复杂的公式不谈，空间自相关就是某空间单元与周围空间单元在属性上的相关性，即物以类聚，人以群分的思想，研究具有相同或相似属性特征的地理要素在空间分布上是否是有规律的。
 详解可查看该博客：    
-[新版白话空间统计（2）：空间自相关](https://blog.csdn.net/allenlu2008/article/details/104204891)
+[新版白话空间统计（2）：空间自相关](https://blog.csdn.net/allenlu2008/article/details/104204891)     
 详细的数学推导过程可参考以下论文：   
 [Global Moran'I法](https://www.jstor.org/stable/2332142?origin=crossref)    
 [LISA法](https://onlinelibrary.wiley.com/doi/epdf/10.1111/j.1538-4632.1995.tb00338.x)
