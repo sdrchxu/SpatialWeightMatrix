@@ -10,7 +10,7 @@
 ## 使用说明
 需要python3解释器，建议python 3.7及以上。    
 **请使用release文件夹中的python脚本**
-### 使用"cal_moran_pysal"
+### 使用cal_moran_pysal
 1. 安装依赖
 ~~~
 pip install geopandas
