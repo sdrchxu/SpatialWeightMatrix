@@ -139,7 +139,7 @@ def __threshold_weights(gdf,L0,elevation,thread_num):
     return weight_info
 
 
-def __read_features_to_dataframe(shp_path, z_field, id_field):
+def __read_features_to_dataframe(shp_path, z_field, id_field,z_scale_factor=1):
     """
     从shapefile中获取X,Y,Z,ID(私有方法，不应在外部调用)   
 
@@ -148,6 +148,7 @@ def __read_features_to_dataframe(shp_path, z_field, id_field):
     shp_path: shp文件路径
     z_field:  z字段名
     id_field: id字段名   
+    z_scale_factor: 用于将z值乘以一个系数，以适应空间权重矩阵的计算
 
     返回值：
     -------------
@@ -158,7 +159,7 @@ def __read_features_to_dataframe(shp_path, z_field, id_field):
     with arcpy.da.SearchCursor(shp_path, ["SHAPE@XY", z_field, id_field]) as cursor:
         for row in cursor:
             x, y = row[0]
-            z = row[1]
+            z = row[1]*z_scale_factor
             id_value = row[2]
             data.append((x, y, z, id_value))
     df = pd.DataFrame(data, columns=['X', 'Y', 'Z', 'ID'])
@@ -167,7 +168,8 @@ def __read_features_to_dataframe(shp_path, z_field, id_field):
 
 def __read_features_to_dataframe_noele(shp_path,id_field):
     """
-    从shapefile中获取X,Y,Z,ID(私有方法，不应在外部调用)   
+    从shapefile中获取X,Y,ID(私有方法，不应在外部调用)
+    不读取Z值   
 
     参数：
     -------------
@@ -191,7 +193,8 @@ def __read_features_to_dataframe_noele(shp_path,id_field):
 
 
 def cal_weight_txt(shp_path,out_path,z_field,id_field,distance_function,
-                threshold=float('inf'),elevation=False,software='arcgis',thread_num=cpu_count()):
+                threshold=float('inf'),elevation=False,software='arcgis',thread_num=cpu_count(),
+                z_scale_factor=1):
     """
     主函数，计算Arcgis权重矩阵文件请调用此函数
     计算全局Moran'I指数，调用该函数后会计算全局Moran'I指数，
@@ -208,6 +211,7 @@ def cal_weight_txt(shp_path,out_path,z_field,id_field,distance_function,
     elevation:         是否在距离计算中考虑高程影响
     software:          适用于空间分析软件的格式，可选arcgis/geoda，arcgis:.txt/geoda:.kwt
     thread_num:        使用的线程数，不应设置为大于CPU线程的值，默认使用全部CPU线程
+    z_scale_factor:    Z值缩放系数
 
     返回值：
     -------------
@@ -217,7 +221,7 @@ def cal_weight_txt(shp_path,out_path,z_field,id_field,distance_function,
     print("Reading Shapefile...")
     #获取dataframe
     if elevation==True:
-        gdf = __read_features_to_dataframe(shp_path,z_field,id_field)
+        gdf = __read_features_to_dataframe(shp_path,z_field,id_field,z_scale_factor)
     else:
         gdf=__read_features_to_dataframe_noele(shp_path,id_field)
 
@@ -261,7 +265,8 @@ def cal_weight_txt(shp_path,out_path,z_field,id_field,distance_function,
 
 
 def cal_weight_txt_folder(shp_folder,output_folder,z_field,id_field,distance_function,
-                threshold=float('inf'),elevation=False,software="arcgis",thread_num=cpu_count()):
+                threshold=float('inf'),elevation=False,software="arcgis",thread_num=cpu_count(),
+                z_scale_factor=1):
     """
     计算给定文件夹中所有shapefile文件的Moran'I指数
 
@@ -275,6 +280,7 @@ def cal_weight_txt_folder(shp_folder,output_folder,z_field,id_field,distance_fun
     threshold:         距离阈值，留空则为不设置阈值
     elevation:         是否在距离计算中考虑高程影响
     software:          适用于空间分析软件的格式，可选arcgis/geoda
+    z_scale_factor:    Z值缩放系数
 
     返回值：
     -------------
@@ -286,7 +292,7 @@ def cal_weight_txt_folder(shp_folder,output_folder,z_field,id_field,distance_fun
             output_file = os.path.join(output_folder, file_name.split('.')[0])
             print(f"Processing {file_name}...")
             cal_weight_txt(shp_path,output_file,z_field,id_field,distance_function,
-                threshold,elevation,software,thread_num)
+                threshold,elevation,software,thread_num,z_scale_factor)
 
 
 
@@ -294,23 +300,25 @@ def cal_weight_txt_folder(shp_folder,output_folder,z_field,id_field,distance_fun
 if __name__ == "__main__":
     #在此处设置参数
 
-    shp_path=None
-    out_path=None
+    shp_path="F:\大创数据\中间产出的数据\上海市和重庆市处理好的住宅区点\处理好的重庆市主城区住宅区_80抽稀.shp"
+    out_path="D:\Lenovo\Desktop\云南大学\大创\程序代码\空间权重矩阵测试\空间权重矩阵中间文件\考虑高程\\arcgis\重庆市住宅区_阈值权_考虑高程_16590"
 
-    shp_folder='F:\大创数据\中间产出的数据\对云南省和黄淮海平原创建的样方\云南省'
-    output_folder='D:\Lenovo\Desktop\云南大学\大创\程序代码\空间权重矩阵测试\空间权重矩阵中间文件\考虑高程\\geoda'
+    # shp_folder='F:\大创数据\中间产出的数据\对云南省和黄淮海平原创建的样方\云南省'
+    # output_folder='D:\Lenovo\Desktop\云南大学\大创\程序代码\空间权重矩阵测试\空间权重矩阵中间文件\考虑高程\\geoda'
 
     z_field='Z'
     id_field='ID'
-    distance_function='inverse'
-    threshold=55000
+    distance_function='threshold'
+    # threshold=10640  #上海
+    # threshold=16590  #重庆
     elevation=True
-    software='geoda'
+    software='arcgis'
     thread_num=16
+    z_factor=2
 
-    # cal_weight_txt(shp_path,out_path,z_field,id_field,distance_function,
-    #                threshold,elevation,software,thread_num)
+    cal_weight_txt(shp_path,out_path,z_field,id_field,distance_function,
+                   threshold,elevation,software,thread_num)
 
-    cal_weight_txt_folder(shp_folder,output_folder,z_field,id_field,distance_function,
-                          threshold,elevation,software,thread_num)
+
+
 

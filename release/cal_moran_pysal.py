@@ -111,7 +111,8 @@ def __threshold_weights(gdf,L0,elevation):
     return spatial_weights_df
 
 
-def global_moran(shp_path,field,output_file,distance_function,threshold=float('inf'),std=True,elevation=True):
+def global_moran(shp_path,field,output_file,distance_function,
+                 threshold=float('inf'),std=True,elevation=True,z_scale_factor=1):
     """
     主函数，计算Moran'I请调用此函数
     计算全局Moran'I指数，调用该函数后会计算全局Moran'I指数，
@@ -126,6 +127,7 @@ def global_moran(shp_path,field,output_file,distance_function,threshold=float('i
     threshold:         距离阈值，留空则为不设置阈值
     std:               标准化方法，True为行标准化，False为不进行标准化
     elevation:         是否在距离计算中考虑高程影响
+    z_scale_factor:    Z值缩放系数
 
     返回值：
     -------------
@@ -133,6 +135,7 @@ def global_moran(shp_path,field,output_file,distance_function,threshold=float('i
     """
     print("Reading Shapefile...")
     gdf = gpd.read_file(shp_path)
+    gdf['Z']=gdf['Z']*z_scale_factor
     print("Calculating Weights Matrix...")
     if distance_function=='threshold':
         spatial_weights_df = __threshold_weights(gdf,threshold,elevation)
@@ -174,7 +177,7 @@ def global_moran(shp_path,field,output_file,distance_function,threshold=float('i
 
 
 
-def global_moran_folder(folder_path, field, output_folder, distance_function, threshold=float('inf'), std=True, elevation=True):
+def global_moran_folder(folder_path, field, output_folder, distance_function, threshold=float('inf'), std=True, elevation=True,z_scale_factor=1):
     """
     计算给定文件夹中所有shapefile文件的Moran'I指数，并输出每个要素的计算结果与汇总表
 
@@ -187,6 +190,7 @@ def global_moran_folder(folder_path, field, output_folder, distance_function, th
     threshold:         距离阈值，留空则为不设置阈值
     std:               标准化方法，True为行标准化，False为不进行标准化
     elevation:         是否在距离计算中考虑高程影响
+    z_scale_factor:     Z值缩放系数
 
     返回值：
     -------------
@@ -198,7 +202,7 @@ def global_moran_folder(folder_path, field, output_folder, distance_function, th
             shp_path = os.path.join(folder_path, file_name)
             output_file = os.path.join(output_folder, os.path.splitext(file_name)[0])
             print(f"Processing {file_name}...")
-            I,p_sim,z_sim=global_moran(shp_path, field, output_file, distance_function, threshold, std, elevation)
+            I,p_sim,z_sim=global_moran(shp_path, field, output_file, distance_function, threshold, std, elevation,z_scale_factor)
             results.append({
                 "File": file_name,
                 "Moran\'s I": I,
