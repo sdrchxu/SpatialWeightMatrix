@@ -252,7 +252,7 @@ def cal_weight_txt(shp_path,out_path,z_field,id_field,distance_function,
                 f.write(f"{info}\n")
 
     elif software=='geoda':
-        out_path=out_path+'.kwt'
+        out_path=out_path+'.gwt'
         with open(out_path, 'w',encoding="gb2312") as f:
             f.write("0 "+str(len(gdf))+" "+shp_name+" "+id_field+"\n")
             for info in spatial_weights_list:
@@ -301,18 +301,18 @@ if __name__ == "__main__":
     #在此处设置参数
 
     shp_path="F:\大创数据\中间产出的数据\上海市和重庆市处理好的住宅区点\处理好的重庆市主城区住宅区_80抽稀.shp"
-    out_path="D:\Lenovo\Desktop\云南大学\大创\程序代码\空间权重矩阵测试\空间权重矩阵中间文件\考虑高程\\arcgis\重庆市住宅区_阈值权_考虑高程_16590"
+    out_path="D:\Lenovo\Desktop\云南大学\大创\程序代码\空间权重矩阵测试\空间权重矩阵中间文件\不考虑高程\\geoda\重庆市住宅区_反距离权_考虑高程_16590"
 
     # shp_folder='F:\大创数据\中间产出的数据\对云南省和黄淮海平原创建的样方\云南省'
     # output_folder='D:\Lenovo\Desktop\云南大学\大创\程序代码\空间权重矩阵测试\空间权重矩阵中间文件\考虑高程\\geoda'
 
     z_field='Z'
     id_field='ID'
-    distance_function='threshold'
+    distance_function='inverse'
     # threshold=10640  #上海
-    # threshold=16590  #重庆
-    elevation=True
-    software='arcgis'
+    threshold=16590  #重庆
+    elevation=False
+    software='geoda'
     thread_num=16
     z_factor=2
 
